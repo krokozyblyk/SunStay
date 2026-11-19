@@ -10,18 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Diagnose API
+        id: diag
         run: |
-          echo "### API diagnostics" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          curl -sS -i --max-time 90 \
-            -H "Origin: https://krokozyblyk.github.io" \
-            https://sunstay-api.onrender.com/api/health >> $GITHUB_STEP_SUMMARY 2>&1 || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
-      - name: Ping analytics
-        run: |
-          echo "### Analytics" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          curl -sS -i --max-time 90 \
-            -H "Origin: https://krokozyblyk.github.io" \
-            https://sunstay-analytics.onrender.com/api/openapi.json >> $GITHUB_STEP_SUMMARY 2>&1 || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          RESP=$(curl -sS -i --max-time 90 -H "Origin: https://krokozyblyk.github.io" https://sunstay-api.onrender.com/api/health 2>&1 || true)
+          echo "api_resp=$(printf '%s' "$RESP" | base64 -w0)" >> "$GITHUB_OUTPUT"
+          RESP2=$(curl -sS -i --max-time 90 -H "Origin: https://krokozyblyk.github.io" https://sunstay-analytics.onrender.com/api/openapi.json 2>&1 || true)
+          echo "analytics_resp=$(printf '%s' "$RESP2" | base64 -w0)" >> "$GITHUB_OUTPUT"
