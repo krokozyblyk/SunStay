@@ -526,16 +526,18 @@ async def change_booking_dates(
     user: dict = Depends(require_guest),
     conn: AsyncConnection = Depends(get_db),
 ):
-    if payload.checkout_date <= payload.checkin_date:
-        raise HTTPException(status_code=400, detail="Дата выезда должна быть позже даты заезда")
-    if payload.checkin_date < date.today():
-        raise HTTPException(status_code=400, detail="Дата заезда уже прошла")
-
     booking = await get_booking(conn, booking_id)
     if booking.get("guest_id") != user["guest_id"]:
         raise HTTPException(status_code=403, detail="Нет доступа к этой брони")
     if booking["status"] not in ("NEW", "CONFIRMED"):
         raise HTTPException(status_code=400, detail="Даты можно изменить только для новой или подтверждённой брони")
+
+    checkin = payload.checkin_date or date.fromisoformat(str(booking["checkin_date"])[:10])
+    checkout = payload.checkout_date or date.fromisoformat(str(booking["checkout_date"])[:10])
+    if checkout <= checkin:
+        raise HTTPException(status_code=400, detail="Дата выезда должна быть позже даты заезда")
+    if checkin < date.today():
+        raise HTTPException(status_code=400, detail="Дата заезда уже прошла")
 
     cur = await conn.execute(
         """
@@ -548,7 +550,7 @@ async def change_booking_dates(
           AND b.checkout_date > %s
         LIMIT 1
         """,
-        (booking["room_id"], booking_id, payload.checkout_date, payload.checkin_date),
+        (booking["room_id"], booking_id, checkout, checkin),
     )
     if await cur.fetchone():
         raise HTTPException(status_code=409, detail="Номер занят на выбранные даты")
@@ -563,7 +565,7 @@ async def change_booking_dates(
         ORDER BY price_per_night
         LIMIT 1
         """,
-        (booking["room_id"], payload.checkin_date, payload.checkout_date),
+        (booking["room_id"], checkin, checkout),
     )
     rate = await cur.fetchone()
     if not rate:
@@ -575,6 +577,9 @@ async def change_booking_dates(
         SET checkin_date = %s,
             checkout_date = %s,
             rate_id = %s,
+            adults = COALESCE(%s, adults),
+            children = COALESCE(%s, children),
+            special_requests = COALESCE(%s, special_requests),
             hold_until = CASE
                 WHEN arrival_time IS NOT NULL THEN (%s::date + arrival_time + (hold_minutes || ' minutes')::interval)
                 ELSE (%s::date + (hold_minutes || ' minutes')::interval)
@@ -583,11 +588,14 @@ async def change_booking_dates(
         RETURNING booking_id
         """,
         (
-            payload.checkin_date,
-            payload.checkout_date,
+            checkin,
+            checkout,
             rate["rate_id"],
-            payload.checkin_date,
-            payload.checkin_date,
+            payload.adults,
+            payload.children,
+            payload.special_requests,
+            checkin,
+            checkin,
             booking_id,
         ),
     )
@@ -596,7 +604,7 @@ async def change_booking_dates(
         booking,
         "BOOKING_CHANGED",
         "Даты бронирования изменены",
-        f"Новые даты: {payload.checkin_date} — {payload.checkout_date}",
+        f"Новые даты: {checkin} — {checkout}",
     )
     return await get_booking(conn, booking_id)
 

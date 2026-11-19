@@ -16,6 +16,7 @@ from ..deps import require_permission
 from ..events import publish, subscribe, unsubscribe
 from ..notifications import notify_guest, notify_guest_by_booking
 from ..schemas import (
+    ChangeBookingRequest,
     CheckInRequest,
     CheckOutRequest,
     GuestCreate,
@@ -23,6 +24,7 @@ from ..schemas import (
     HoldUpdateRequest,
     MoveBookingRequest,
     NightAuditRequest,
+    ProfileUpdate,
     PaymentCreate,
     RefundCreate,
     RoomStatusUpdate,
@@ -444,7 +446,25 @@ async def check_in(
     user: dict = Depends(require_permission("bookings:checkin")),
     conn: AsyncConnection = Depends(get_db),
 ):
-    document = document_fields(payload.document_number)
+    if payload.document_number and payload.document_number.strip():
+        document = document_fields(payload.document_number)
+    else:
+        cur = await conn.execute(
+            """
+            SELECT g.document_number, g.document_number_enc, g.document_number_hash
+            FROM guests g JOIN bookings b ON b.guest_id = g.guest_id
+            WHERE b.booking_id = %s
+            """,
+            (booking_id,),
+        )
+        row = await cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Гость брони не найден")
+        document = {
+            "document_number": row["document_number"],
+            "document_number_enc": row["document_number_enc"],
+            "document_number_hash": row["document_number_hash"],
+        }
     await conn.execute(
         """
         CALL sp_check_in_secure(
@@ -1272,3 +1292,60 @@ async def send_mass_notification(
         if await notify_guest(conn, guest_id, "MANUAL", subject, body):
             sent += 1
     return {"ok": True, "sent": sent}
+
+
+@router.patch("/bookings/{booking_id}/details")
+async def update_booking_details(
+    booking_id: int,
+    payload: ChangeBookingRequest,
+    user: dict = Depends(require_permission("bookings:update")),
+    conn: AsyncConnection = Depends(get_db),
+):
+    booking = await get_booking(conn, booking_id)
+    checkin = payload.checkin_date or date.fromisoformat(str(booking["checkin_date"])[:10])
+    checkout = payload.checkout_date or date.fromisoformat(str(booking["checkout_date"])[:10])
+    if checkout <= checkin:
+        raise HTTPException(status_code=400, detail="Дата выезда должна быть позже даты заезда")
+    await conn.execute(
+        """
+        UPDATE bookings
+        SET checkin_date = %s,
+            checkout_date = %s,
+            adults = COALESCE(%s, adults),
+            children = COALESCE(%s, children),
+            special_requests = COALESCE(%s, special_requests)
+        WHERE booking_id = %s
+        """,
+        (checkin, checkout, payload.adults, payload.children, payload.special_requests, booking_id),
+    )
+    await publish("bookings", {"id": booking_id, "status": "UPDATED"})
+    return await get_booking(conn, booking_id)
+
+
+@router.patch("/guests/{guest_id}")
+async def update_guest(
+    guest_id: int,
+    payload: ProfileUpdate,
+    user: dict = Depends(require_permission("bookings:update")),
+    conn: AsyncConnection = Depends(get_db),
+):
+    cur = await conn.execute(
+        "SELECT guest_id FROM guests WHERE lower(email) = lower(%s) AND guest_id <> %s",
+        (payload.email, guest_id),
+    )
+    if await cur.fetchone():
+        raise HTTPException(status_code=409, detail="Этот email уже используется")
+    phone = phone_fields(payload.phone)
+    await conn.execute(
+        """
+        UPDATE guests
+        SET full_name = %s, email = %s,
+            phone = COALESCE(%s, phone),
+            phone_enc = COALESCE(%s, phone_enc),
+            phone_hash = COALESCE(%s, phone_hash)
+        WHERE guest_id = %s
+        """,
+        (payload.full_name, payload.email, phone["phone"], phone["phone_enc"], phone["phone_hash"], guest_id),
+    )
+    await publish("bookings", {"guest_id": guest_id, "status": "UPDATED"})
+    return {"ok": True}

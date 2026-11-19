@@ -25,6 +25,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, downloadFile, getErrorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useToast } from "../components/ui";
+import { TwoFactorSetup } from "../components/TwoFactor";
 import {
   Avatar,
   Badge,
@@ -515,46 +516,7 @@ export function EmployeesPage() {
 }
 
 export function TwoFactorCard() {
-  const { toast } = useToast();
-  const [secret, setSecret] = useState("");
-  const [code, setCode] = useState("");
-  const [recovery, setRecovery] = useState<string[]>([]);
-  const setup = useMutation({
-    mutationFn: () => api.post("/auth/2fa/setup").then((response) => response.data),
-    onSuccess: (data) => { setSecret(data.secret); toast("Секрет создан", "success"); },
-    onError: (error) => toast(getErrorMessage(error), "error"),
-  });
-  const enable = useMutation({
-    mutationFn: () => api.post("/auth/2fa/enable", { code }).then((response) => response.data),
-    onSuccess: (data) => { setRecovery(data.recovery_codes ?? []); toast("2FA включена", "success"); },
-    onError: (error) => toast(getErrorMessage(error), "error"),
-  });
-  const disable = useMutation({
-    mutationFn: (password: string) => api.post("/auth/2fa/disable", { password }),
-    onSuccess: () => { setSecret(""); setRecovery([]); toast("2FA отключена", "success"); },
-    onError: (error) => toast(getErrorMessage(error), "error"),
-  });
-  return (
-    <Card className="space-y-3">
-      <h2 className="font-display text-2xl font-semibold">Двухфакторная аутентификация</h2>
-      <p className="text-sm text-muted">Введите секрет в приложение-аутентификатор вручную, затем подтвердите кодом.</p>
-      <Button variant="secondary" onClick={() => setup.mutate()} disabled={setup.isPending}>Создать секрет</Button>
-      <Button variant="ghost" onClick={() => { const password = window.prompt("Пароль для отключения 2FA"); if (password) disable.mutate(password); }}>Отключить 2FA</Button>
-      {secret && (
-        <>
-          <div className="rounded-xl bg-surface2 p-3 font-mono text-sm break-all">{secret}</div>
-          <Input label="Код из приложения" value={code} onChange={(event) => setCode(event.target.value)} placeholder="123456" />
-          <Button onClick={() => enable.mutate()} disabled={enable.isPending || code.length !== 6}>Включить 2FA</Button>
-        </>
-      )}
-      {recovery.length > 0 && (
-        <div className="rounded-xl border border-line p-3 text-xs">
-          <p className="font-semibold">Резервные коды (сохраните):</p>
-          <div className="mt-2 grid grid-cols-2 gap-1 font-mono">{recovery.map((item) => <span key={item}>{item}</span>)}</div>
-        </div>
-      )}
-    </Card>
-  );
+  return <TwoFactorSetup />;
 }
 
 function DirectoryPageContent() {
@@ -1120,20 +1082,12 @@ export function AdminSettingsPage() {
     onSuccess: () => { toast("Настройки сохранены", "success"); queryClient.invalidateQueries({ queryKey: ["admin-settings"] }); },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
-  const [totpSecret, setTotpSecret] = useState("");
-  const [totpCode, setTotpCode] = useState("");
-  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const setup2fa = useMutation({
-    mutationFn: () => api.post("/auth/2fa/setup").then((response) => response.data),
-    onSuccess: (data) => { setTotpSecret(data.secret); toast("Секрет создан. Введите код из приложения.", "success"); },
+  const [passwordForm, setPasswordForm] = useState({ old_password: "", new_password: "" });
+  const passwordMutation = useMutation({
+    mutationFn: () => api.post("/auth/change-password", passwordForm),
+    onSuccess: () => { toast("Пароль изменён", "success"); setPasswordForm({ old_password: "", new_password: "" }); },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
-  const enable2fa = useMutation({
-    mutationFn: () => api.post("/auth/2fa/enable", { code: totpCode }).then((response) => response.data),
-    onSuccess: (data) => { setRecoveryCodes(data.recovery_codes ?? []); toast("2FA включена", "success"); },
-    onError: (error) => toast(getErrorMessage(error), "error"),
-  });
-
   if (query.isLoading) return <Spinner />;
   if (query.isError) return <ErrorState message={getErrorMessage(query.error)} />;
 
@@ -1173,23 +1127,12 @@ export function AdminSettingsPage() {
           </Select>
         </Card>
         <Card className="space-y-3">
-          <h2 className="font-display text-2xl font-semibold">Двухфакторная аутентификация</h2>
-          <p className="text-sm text-muted">Доступна администратору БД и управляющему отелем. Введите секрет в приложение-аутентификатор вручную.</p>
-          <Button variant="secondary" onClick={() => setup2fa.mutate()} disabled={setup2fa.isPending}>Создать секрет</Button>
-          {totpSecret && (
-            <>
-              <div className="rounded-xl bg-surface2 p-3 font-mono text-sm break-all">{totpSecret}</div>
-              <Input label="Код из приложения" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} placeholder="123456" />
-              <Button onClick={() => enable2fa.mutate()} disabled={enable2fa.isPending || totpCode.length !== 6}>Включить 2FA</Button>
-            </>
-          )}
-          {recoveryCodes.length > 0 && (
-            <div className="rounded-xl border border-line p-3 text-xs">
-              <p className="font-semibold">Резервные коды (сохраните):</p>
-              <div className="mt-2 grid grid-cols-2 gap-1 font-mono">{recoveryCodes.map((code) => <span key={code}>{code}</span>)}</div>
-            </div>
-          )}
+          <h2 className="font-display text-2xl font-semibold">Смена пароля</h2>
+          <Input label="Текущий пароль" type="password" value={passwordForm.old_password} onChange={(event) => setPasswordForm({ ...passwordForm, old_password: event.target.value })} />
+          <Input label="Новый пароль" type="password" value={passwordForm.new_password} onChange={(event) => setPasswordForm({ ...passwordForm, new_password: event.target.value })} />
+          <Button onClick={() => passwordMutation.mutate()} disabled={passwordMutation.isPending || !passwordForm.old_password || passwordForm.new_password.length < 8}>Сменить пароль</Button>
         </Card>
+        <TwoFactorSetup />
         <Card className="space-y-3">
           <h2 className="font-display text-2xl font-semibold">Функции сайта</h2>
           {[

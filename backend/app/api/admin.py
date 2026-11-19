@@ -741,13 +741,18 @@ async def restore_backup(
     path = backup_path()
     if not path.exists():
         raise HTTPException(status_code=404, detail="Резервная копия не найдена")
+    if path.stat().st_size == 0:
+        raise HTTPException(status_code=400, detail="Резервная копия пустая — создайте её заново")
     result = await asyncio.to_thread(
         subprocess.run,
         [
             "pg_restore",
             "--clean",
             "--if-exists",
+            "-n",
+            "public",
             "--no-owner",
+            "--no-acl",
             "--dbname",
             settings.database_admin_url,
             str(path),
@@ -894,6 +899,8 @@ async def verify_backup(user: dict = Depends(require_permission("backup:manage")
     path = backup_path()
     if not path.exists():
         raise HTTPException(status_code=404, detail="Резервная копия не найдена")
+    if path.stat().st_size == 0:
+        raise HTTPException(status_code=400, detail="Резервная копия пустая — создайте её заново")
     checksum = hashlib.sha256(path.read_bytes()).hexdigest()
     result = await asyncio.to_thread(
         subprocess.run,
@@ -917,6 +924,8 @@ async def test_restore(user: dict = Depends(require_permission("backup:manage"))
     path = backup_path()
     if not path.exists():
         raise HTTPException(status_code=404, detail="Резервная копия не найдена")
+    if path.stat().st_size == 0:
+        raise HTTPException(status_code=400, detail="Резервная копия пустая — создайте её заново")
     settings = get_settings()
     admin_url = settings.database_admin_url
     temp_db = "hotel_restore_check"
@@ -928,7 +937,7 @@ async def test_restore(user: dict = Depends(require_permission("backup:manage"))
             return {"ok": False, "error": (created.stderr or "")[:500]}
         temp_url = _with_db(admin_url, temp_db)
         restored = subprocess.run(
-            ["pg_restore", "--no-owner", "--dbname", temp_url, str(path)],
+            ["pg_restore", "-n", "public", "--no-owner", "--no-acl", "--dbname", temp_url, str(path)],
             capture_output=True,
             text=True,
             timeout=180,

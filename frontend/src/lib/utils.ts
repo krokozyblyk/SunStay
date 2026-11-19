@@ -184,17 +184,27 @@ export function dateRange(start: string, end: string) {
   return days;
 }
 
+export function asset(path: string) {
+  return `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
+}
+
+export function resolveImage(value?: string | null, fallback = "") {
+  if (!value) return fallback;
+  if (value.startsWith("http") || value.startsWith("data:")) return value;
+  return asset(value);
+}
+
 export function roomImageByName(name?: string | null) {
   const value = (name ?? "").toLowerCase();
-  if (value.includes("стандарт")) return "images/room-standard.jpg";
-  if (value.includes("комфорт")) return "images/room-comfort.jpg";
-  if (value.includes("люкс")) return "images/room-lux.jpg";
-  return "images/room-standard.jpg";
+  if (value.includes("стандарт")) return asset("images/room-standard.jpg");
+  if (value.includes("комфорт")) return asset("images/room-comfort.jpg");
+  if (value.includes("люкс")) return asset("images/room-lux.jpg");
+  return asset("images/room-standard.jpg");
 }
 
 export function serviceImageByName(name?: string | null) {
   const value = (name ?? "").toLowerCase();
-  if (value.includes("завтрак")) return "images/service-breakfast.jpg";
-  if (value.includes("спа") || value.includes("массаж")) return "images/service-spa.jpg";
-  return "images/service-other.jpg";
+  if (value.includes("завтрак")) return asset("images/service-breakfast.jpg");
+  if (value.includes("спа") || value.includes("массаж")) return asset("images/service-spa.jpg");
+  return asset("images/service-other.jpg");
 }

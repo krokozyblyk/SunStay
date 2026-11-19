@@ -17,6 +17,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type ChangeEvent,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -189,10 +190,31 @@ export function Input({
   className,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
+  const isNumber = props.type === "number";
+  const display = (value: unknown) => (value === 0 || value === null || value === undefined ? "" : String(value));
+  const [text, setText] = useState(() => display(props.value));
+  useEffect(() => {
+    if (isNumber) setText(display(props.value));
+  }, [props.value, isNumber]);
+
+  const handleNumber = (event: ChangeEvent<HTMLInputElement>) => {
+    let next = event.target.value.replace(/[^0-9.]/g, "");
+    if (next.length > 1 && next.startsWith("0") && next[1] !== ".") {
+      next = next.replace(/^0+/, "") || "0";
+    }
+    setText(next);
+    props.onChange?.({ ...event, target: { ...event.target, value: next } } as ChangeEvent<HTMLInputElement>);
+  };
+
   return (
     <label className="flex flex-col gap-1.5">
       {label && <span className="label">{label}</span>}
-      <input className={cn("input", className)} {...props} />
+      <input
+        {...props}
+        className={cn("input", className)}
+        value={isNumber ? text : props.value}
+        onChange={isNumber ? handleNumber : props.onChange}
+      />
     </label>
   );
 }

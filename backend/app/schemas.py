@@ -29,6 +29,12 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class ProfileUpdate(BaseModel):
+    full_name: str = Field(min_length=3, max_length=200)
+    email: str
+    phone: str | None = None
+
+
 class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=3, max_length=200)
     document_number: str = Field(min_length=3, max_length=50)
@@ -101,7 +107,7 @@ class MoveBookingRequest(BaseModel):
 
 
 class CheckInRequest(BaseModel):
-    document_number: str
+    document_number: str = ""
     deposit_amount: float = 0
     payment_method: Literal["CARD", "CASH", "BANK_TRANSFER", "ONLINE"] = "CARD"
 
@@ -213,8 +219,11 @@ class BlockUserRequest(BaseModel):
 
 
 class ChangeBookingRequest(BaseModel):
-    checkin_date: date
-    checkout_date: date
+    checkin_date: date | None = None
+    checkout_date: date | None = None
+    adults: int | None = Field(default=None, ge=1, le=10)
+    children: int | None = Field(default=None, ge=0, le=10)
+    special_requests: str | None = Field(default=None, max_length=1000)
 
 
 class SpecialRequestsUpdate(BaseModel):

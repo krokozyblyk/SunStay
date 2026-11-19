@@ -73,6 +73,7 @@ import {
   formatNumber,
   LINE_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
+  resolveImage,
   roomImageByName,
   statusClass,
   statusLabel,
@@ -778,6 +779,17 @@ export function BookingDetailPage() {
   const [checkOutForm, setCheckOutForm] = useState({ payment_amount: 0, payment_method: "CARD" });
   const [reasonId, setReasonId] = useState<number | "">("");
   const [moveForm, setMoveForm] = useState({ room_id: "", checkin_date: "", checkout_date: "" });
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsForm, setDetailsForm] = useState({ checkin_date: "", checkout_date: "", adults: 1, children: 0, special_requests: "" });
+  const detailsMutation = useMutation({
+    mutationFn: () => api.patch(`/manager/bookings/${id}/details`, detailsForm),
+    onSuccess: () => {
+      toast("Данные брони обновлены", "success");
+      setDetailsOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["manager-booking", id] });
+    },
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
 
   const query = useQuery({
     queryKey: ["manager-booking", id],
@@ -851,6 +863,7 @@ export function BookingDetailPage() {
         actions={
           <>
             <Button variant="secondary" onClick={() => navigate("/app/bookings")}>Назад</Button>
+            <Button variant="secondary" onClick={() => { setDetailsForm({ checkin_date: String(booking.checkin_date).slice(0, 10), checkout_date: String(booking.checkout_date).slice(0, 10), adults: booking.adults, children: booking.children, special_requests: booking.special_requests ?? "" }); setDetailsOpen(true); }}>Изменить бронь</Button>
             <Button variant="secondary" onClick={() => setNotifyOpen(true)}>Уведомить гостя</Button>
             {booking.status === "NEW" && <Button onClick={() => actionMutation.mutate({ action: "confirm" })}><Check size={15} /> Подтвердить</Button>}
             {canCheckIn && <Button onClick={() => setCheckInOpen(true)}><LogIn size={15} /> Заселить</Button>}
@@ -887,7 +900,7 @@ export function BookingDetailPage() {
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl bg-surface2 p-4"><p className="label">Гость</p><p className="mt-2 font-semibold">{booking.guest_name}</p><p className="text-sm text-muted"><SensitiveValue value={booking.document_number} /></p><p className="text-sm text-muted"><SensitiveValue value={booking.guest_phone} /></p><p className="text-sm text-muted">{booking.guest_email}</p></div>
-              <div className="rounded-xl bg-surface2 p-4"><img src={booking.room_image || roomImageByName(booking.room_type)} alt={booking.room_type} loading="lazy" className="mb-3 h-28 w-full rounded-lg object-cover" /><p className="label">Проживание</p><p className="mt-2 text-sm text-muted">Заезд: {formatDate(booking.checkin_date)}</p><p className="text-sm text-muted">Выезд: {formatDate(booking.checkout_date)}</p><p className="text-sm text-muted">Время заезда: {String(booking.arrival_time ?? "—").slice(0, 5)}</p><p className="text-sm text-muted">Держать до: {booking.hold_until ? formatDateTime(booking.hold_until) : "—"}</p><p className="text-sm text-muted">Тариф: {booking.rate_name}</p><p className="text-sm text-muted">Гостей: {booking.adults + booking.children}</p>{booking.special_requests && <p className="mt-2 text-sm text-terracotta">Пожелания: {booking.special_requests}</p>}</div>
+              <div className="rounded-xl bg-surface2 p-4"><img src={resolveImage(booking.room_image, roomImageByName(booking.room_type))} alt={booking.room_type} loading="lazy" className="mb-3 h-28 w-full rounded-lg object-cover" /><p className="label">Проживание</p><p className="mt-2 text-sm text-muted">Заезд: {formatDate(booking.checkin_date)}</p><p className="text-sm text-muted">Выезд: {formatDate(booking.checkout_date)}</p><p className="text-sm text-muted">Время заезда: {String(booking.arrival_time ?? "—").slice(0, 5)}</p><p className="text-sm text-muted">Держать до: {booking.hold_until ? formatDateTime(booking.hold_until) : "—"}</p><p className="text-sm text-muted">Тариф: {booking.rate_name}</p><p className="text-sm text-muted">Гостей: {booking.adults + booking.children}</p>{booking.special_requests && <p className="mt-2 text-sm text-terracotta">Пожелания: {booking.special_requests}</p>}</div>
             </div>
           </Card>
           <Card>
@@ -928,9 +941,26 @@ export function BookingDetailPage() {
         </div>
       </div>
 
+      <Modal
+        open={detailsOpen}
+        title="Изменить данные брони"
+        subtitle="Даты, количество гостей и пожелания"
+        onClose={() => setDetailsOpen(false)}
+        footer={<><Button variant="secondary" onClick={() => setDetailsOpen(false)}>Отмена</Button><Button onClick={() => detailsMutation.mutate()} disabled={detailsMutation.isPending}>Сохранить</Button></>}
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <Input label="Заезд" type="date" value={detailsForm.checkin_date} onChange={(event) => setDetailsForm({ ...detailsForm, checkin_date: event.target.value })} />
+          <Input label="Выезд" type="date" value={detailsForm.checkout_date} onChange={(event) => setDetailsForm({ ...detailsForm, checkout_date: event.target.value })} />
+          <Input label="Взрослые" type="number" value={detailsForm.adults} onChange={(event) => setDetailsForm({ ...detailsForm, adults: Number(event.target.value) })} />
+          <Input label="Дети" type="number" value={detailsForm.children} onChange={(event) => setDetailsForm({ ...detailsForm, children: Number(event.target.value) })} />
+        </div>
+        <div className="mt-3">
+          <Input label="Особые пожелания" value={detailsForm.special_requests} onChange={(event) => setDetailsForm({ ...detailsForm, special_requests: event.target.value })} />
+        </div>
+      </Modal>
       <Modal open={checkInOpen} title="Заселение гостя" subtitle="Проверьте документ и при необходимости примите депозит." onClose={() => setCheckInOpen(false)} footer={<><Button variant="secondary" onClick={() => setCheckInOpen(false)}>Отмена</Button><Button onClick={() => actionMutation.mutate({ action: "check-in", payload: checkInForm })} disabled={actionMutation.isPending}>Подтвердить заселение</Button></>}>
         <div className="space-y-3">
-          <Input label="Документ гостя" value={checkInForm.document_number} onChange={(event) => setCheckInForm({ ...checkInForm, document_number: event.target.value })} />
+          <Input label="Документ гостя (необязательно — возьмём из профиля)" value={checkInForm.document_number} onChange={(event) => setCheckInForm({ ...checkInForm, document_number: event.target.value })} placeholder="Оставьте пустым, чтобы использовать данные гостя" />
           <Input label="Депозит" type="number" value={checkInForm.deposit_amount} onChange={(event) => setCheckInForm({ ...checkInForm, deposit_amount: Number(event.target.value) })} />
           <Select label="Способ оплаты" value={checkInForm.payment_method} onChange={(event) => setCheckInForm({ ...checkInForm, payment_method: event.target.value })}>
             <option value="CARD">Карта</option><option value="CASH">Наличные</option><option value="BANK_TRANSFER">Банковский перевод</option><option value="ONLINE">Онлайн</option>

@@ -24,8 +24,9 @@
   UserRound,
   Users,
   Wrench,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, type User } from "../lib/auth";
@@ -171,32 +172,54 @@ function NotificationBell() {
   const { user } = useAuth();
   const base = user?.role_code === "GUEST" ? "/guest/notifications" : "/notifications";
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications-count", base] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-list", base] });
+  };
   const countQuery = useQuery({
     queryKey: ["notifications-count", base],
     queryFn: () => api.get(`${base}/unread-count`).then((response) => response.data),
     refetchInterval: 30000,
   });
   const listQuery = useQuery({
-    queryKey: ["guest-notifications"],
+    queryKey: ["notifications-list", base],
     queryFn: () => api.get(base).then((response) => response.data),
     enabled: open,
   });
   const readMutation = useMutation({
     mutationFn: (id: number) => api.post(`${base}/${id}/read`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["guest-notifications"] }),
-    onError: (error) => getErrorMessage(error),
+    onSuccess: invalidate,
   });
   const readAllMutation = useMutation({
     mutationFn: () => api.post(`${base}/read-all`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["guest-notifications"] }),
+    onSuccess: invalidate,
   });
 
   const unread = Number(countQuery.data?.count ?? 0);
+  const items = (listQuery.data ?? []).filter((item: any) => !item.read_at);
   return (
-    <>
+    <div className="relative" ref={panelRef}>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen((value) => !value)}
         className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface text-muted hover:text-ink"
         title="Уведомления"
       >
@@ -207,35 +230,35 @@ function NotificationBell() {
           </span>
         )}
       </button>
-      <Modal
-        open={open}
-        title="Уведомления"
-        subtitle="Новости по вашим бронированиям"
-        onClose={() => setOpen(false)}
-        footer={<Button variant="secondary" onClick={() => readAllMutation.mutate()}>Прочитать все</Button>}
-      >
-        {listQuery.isLoading && <Spinner />}
-        {!listQuery.isLoading && !(listQuery.data ?? []).length && (
-          <p className="py-6 text-center text-sm text-muted">Уведомлений пока нет.</p>
-        )}
-        <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-          {(listQuery.data ?? []).map((item: any) => (
-            <button
-              key={item.notification_id}
-              onClick={() => readMutation.mutate(item.notification_id)}
-              className={`block w-full rounded-xl border p-3 text-left transition ${item.read_at ? "border-line bg-surface" : "border-terracotta/40 bg-terracotta/8"}`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-ink">{item.title}</p>
-                {!item.read_at && <span className="h-2 w-2 shrink-0 rounded-full bg-terracotta" />}
-              </div>
-              {item.body && <p className="mt-1 text-xs text-muted">{item.body}</p>}
-              <p className="mt-1 text-[10px] text-muted">{formatDateTime(item.created_at)}</p>
+      {open && (
+        <div className="absolute right-0 top-11 z-50 w-80 rounded-2xl border border-line bg-surface p-3 shadow-float">
+          <div className="flex items-center justify-between">
+            <p className="font-display text-lg font-semibold text-ink">Уведомления</p>
+            <button className="rounded-lg p-1 text-muted hover:bg-surface2" onClick={() => setOpen(false)} aria-label="Закрыть">
+              <X size={16} />
             </button>
-          ))}
+          </div>
+          <div className="mt-2 max-h-72 space-y-2 overflow-y-auto">
+            {listQuery.isLoading && <Spinner />}
+            {!listQuery.isLoading && !items.length && <p className="py-6 text-center text-sm text-muted">Новых уведомлений нет.</p>}
+            {items.map((item: any) => (
+              <button
+                key={item.notification_id}
+                onClick={() => readMutation.mutate(item.notification_id)}
+                className="block w-full rounded-xl border border-terracotta/30 bg-terracotta/6 p-3 text-left transition hover:bg-terracotta/10"
+              >
+                <p className="text-sm font-semibold text-ink">{item.title}</p>
+                {item.body && <p className="mt-1 break-words text-xs text-muted">{item.body}</p>}
+                <p className="mt-1 text-[10px] text-muted">{formatDateTime(item.created_at)}</p>
+              </button>
+            ))}
+          </div>
+          <Button variant="secondary" className="mt-3 w-full" size="sm" onClick={() => readAllMutation.mutate()} disabled={readAllMutation.isPending || !items.length}>
+            Прочитать все
+          </Button>
         </div>
-      </Modal>
-    </>
+      )}
+    </div>
   );
 }
 
@@ -369,7 +392,20 @@ function navForRole(role: string, t: (key: string) => string, loyaltyEnabled = t
 }
 
 function HotkeysModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const shortcuts = [
+  const { lang } = useI18n();
+  const en = lang === "en";
+  const shortcuts = en ? [
+    ["?", "Show shortcuts"],
+    ["N", "New booking"],
+    ["F", "Focus search"],
+    ["G", "Room grid"],
+    ["B", "Bookings"],
+    ["R", "Reports"],
+    ["T", "Toggle theme"],
+    ["L", "Toggle language"],
+    ["Esc", "Close window"],
+    ["Ctrl + Enter", "Save / submit form"],
+  ] : [
     ["?", "Открыть горячие клавиши"],
     ["N", "Новая бронь"],
     ["F", "Фокус на поиске"],
@@ -382,7 +418,7 @@ function HotkeysModal({ open, onClose }: { open: boolean; onClose: () => void })
     ["Ctrl + Enter", "Сохранить / отправить форму"],
   ];
   return (
-    <Modal open={open} title="Горячие клавиши" subtitle="Быстрые действия в интерфейсе SunStay" onClose={onClose}>
+    <Modal open={open} title={en ? "Keyboard shortcuts" : "Горячие клавиши"} subtitle={en ? "Quick actions in SunStay" : "Быстрые действия в интерфейсе SunStay"} onClose={onClose}>
       <div className="space-y-2">
         {shortcuts.map(([key, label]) => (
           <div key={key} className="flex items-center justify-between gap-4 rounded-xl border border-line bg-surface2 px-3 py-2">
@@ -576,6 +612,9 @@ export function AppShell() {
                 <p className="truncate text-[10px] text-muted">{ROLE_LABELS[user.role_code] ?? user.role_name}</p>
               </div>
             </div>
+            <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate("/"))} title="Выйти">
+              <LogOut size={16} />
+            </Button>
           </div>
         </header>
         <main className="mx-auto max-w-[1500px] animate-fade-in px-4 py-6 md:px-6 md:py-8">

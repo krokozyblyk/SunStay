@@ -367,17 +367,24 @@ export function ConsumablesPage() {
           <table className="table-base">
             <thead><tr><th>Материал</th><th>Ед.</th><th>Остаток</th><th>Минимум</th><th>Использовано</th><th>Дефицит</th><th /></tr></thead>
             <tbody>
-              {(consumablesQuery.data ?? []).map((item: any) => (
-                <tr key={item.consumable_id}>
-                  <td className="font-medium">{item.name}</td>
-                  <td>{item.unit}</td>
-                  <td className="font-semibold">{formatNumber(item.stock_quantity)}</td>
-                  <td>{formatNumber(item.min_stock)}</td>
-                  <td>{formatNumber(item.used_total)}</td>
-                  <td>{item.deficit ? <Badge tone="danger">Дефицит</Badge> : <Badge tone="success">В норме</Badge>}</td>
-                  <td className="text-right"><Button variant="ghost" size="sm" onClick={() => { setForm({ ...form, consumable_id: String(item.consumable_id) }); setWriteOffOpen(true); }}>Списать</Button></td>
-                </tr>
-              ))}
+              {(consumablesQuery.data ?? []).map((item: any) => {
+                const min = Number(item.min_stock || 0);
+                const stock = Number(item.stock_quantity || 0);
+                const ratio = min > 0 ? stock / min : 1;
+                const tone = ratio <= 0.5 ? "danger" : ratio <= 1 ? "warning" : "success";
+                const label = ratio <= 0.5 ? "Критично мало" : ratio <= 1 ? "Ниже нормы" : "В норме";
+                return (
+                  <tr key={item.consumable_id}>
+                    <td className="font-medium">{item.name}</td>
+                    <td>{item.unit}</td>
+                    <td className="font-semibold">{formatNumber(stock)}</td>
+                    <td>{formatNumber(min)}</td>
+                    <td>{formatNumber(item.used_total)}</td>
+                    <td><Badge tone={tone}>{label}</Badge></td>
+                    <td className="text-right"><Button variant="ghost" size="sm" onClick={() => { setForm({ ...form, consumable_id: String(item.consumable_id) }); setWriteOffOpen(true); }}>Списать</Button></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

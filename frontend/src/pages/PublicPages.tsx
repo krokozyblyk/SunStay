@@ -29,7 +29,7 @@ import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 import { useCurrency } from "../lib/currency";
 import { useFeatures } from "../lib/features";
-import { addDaysISO, formatDate, nightsBetween, roomImageByName, todayISO } from "../lib/utils";
+import { addDaysISO, formatDate, nightsBetween, resolveImage, roomImageByName, todayISO } from "../lib/utils";
 import { Button, Card, ErrorState, Input, Select, Spinner, StatusPill, Textarea, useToast } from "../components/ui";
 import { homeForRole } from "../components/Layout";
 
@@ -48,10 +48,11 @@ const FALLBACK_ROOM_TYPES = [
 ];
 
 function RoomArt({ index = 0, className = "", imageUrl }: { index?: number; className?: string; imageUrl?: string | null }) {
-  if (imageUrl) {
+  const resolved = resolveImage(imageUrl);
+  if (resolved) {
     return (
       <div className={`relative overflow-hidden rounded-2xl bg-surface2 ${className}`}>
-        <img src={imageUrl} alt="Номер SunStay" loading="lazy" className="h-full w-full object-cover" />
+        <img src={resolved} alt="Номер SunStay" loading="lazy" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
       </div>
     );
@@ -270,7 +271,7 @@ export function LandingPage() {
                 <label className="col-span-1 flex flex-col gap-1.5">
                   <span className="label">{en ? "Guests" : "Гости"}</span>
                   <select value={guests} onChange={(event) => setGuests(Number(event.target.value))} className="input">
-                    {[1, 2, 3, 4].map((value) => <option key={value} value={value}>{en ? `${value} guests` : `${value} гостя`}</option>)}
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((value) => <option key={value} value={value}>{en ? `${value} guests` : `${value} гостя`}</option>)}
                   </select>
                 </label>
                 <div className="col-span-1 flex items-end">
@@ -425,6 +426,7 @@ export function LandingPage() {
 export function SearchPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { format } = useCurrency();
   const features = useFeatures();
   const checkin = params.get("checkin") || addDaysISO(todayISO(), 7);
@@ -461,8 +463,7 @@ export function SearchPage() {
     navigate(`/search?${next.toString()}`);
   }
 
-  function chooseRoom(roomType: any) {
-    const room = roomType.rooms?.[0];
+  function chooseRoom(roomType: any, room: any) {
     if (!room) return;
     const next = new URLSearchParams({
       room_id: String(room.room_id),
@@ -473,9 +474,16 @@ export function SearchPage() {
       room_type: roomType.name,
       room_number: room.room_number,
       guests: String(guests),
-      image: roomType.image_url || "",
+      image: room.image_url || roomType.image_url || "",
+      variant: room.variant_name || "",
+      description: room.description || "",
     });
-    navigate(`/checkout?${next.toString()}`);
+    const target = `/checkout?${next.toString()}`;
+    if (!user) {
+      navigate("/login", { state: { from: target } });
+      return;
+    }
+    navigate(target);
   }
 
   return (
@@ -491,7 +499,7 @@ export function SearchPage() {
           <Input label="Заезд" type="date" value={localCheckin} onChange={(event) => setLocalCheckin(event.target.value)} />
           <Input label="Выезд" type="date" value={localCheckout} onChange={(event) => setLocalCheckout(event.target.value)} />
           <Select label="Гости" value={localGuests} onChange={(event) => setLocalGuests(Number(event.target.value))}>
-            {[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value} гостя</option>)}
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((value) => <option key={value} value={value}>{value} гостя</option>)}
           </Select>
           <Select label="Тип номера" value={localRoomType} onChange={(event) => setLocalRoomType(event.target.value)}>
             <option value="">Все типы</option>
@@ -536,10 +544,11 @@ export function SearchPage() {
               {features.waitlist && <WaitlistForm checkin={checkin} checkout={checkout} guests={guests} roomTypeId={roomTypeId} />}
             </>
           )}
-          {results.map((roomType: any, index: number) => (
-            <Card key={roomType.room_type_id} className="overflow-hidden p-0">
-              <div className="grid md:grid-cols-[220px_1fr]">
-                <RoomArt index={index} imageUrl={roomType.image_url || roomImageByName(roomType.name)} className="h-44 rounded-none md:h-full" />
+          {results.map((roomType: any, index: number) => {
+            const rooms = roomType.rooms ?? [];
+            const variants = Array.from(new Set(rooms.map((room: any) => room.variant_name || "Номер"))) as string[];
+            return (
+              <Card key={roomType.room_type_id} className="overflow-hidden p-0">
                 <div className="p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -557,14 +566,30 @@ export function SearchPage() {
                       <span key={amenity} className="badge bg-surface2 text-muted">{amenity}</span>
                     ))}
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm text-muted">Итого за {nights} ночей: <span className="font-semibold text-ink">{format(Number(roomType.price_per_night) * nights)}</span></p>
-                    <Button onClick={() => chooseRoom(roomType)}>Выбрать <ArrowRight size={15} /></Button>
-                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+                <div className="grid gap-3 border-t border-line p-5 md:grid-cols-3">
+                  {variants.map((variant, variantIndex) => {
+                    const room = rooms.find((item: any) => (item.variant_name || "Номер") === variant);
+                    const count = rooms.filter((item: any) => (item.variant_name || "Номер") === variant).length;
+                    if (!room) return null;
+                    return (
+                      <div key={variant} className="overflow-hidden rounded-2xl border border-line bg-surface">
+                        <RoomArt index={index + variantIndex} imageUrl={room.image_url || roomType.image_url} className="h-36 rounded-none" />
+                        <div className="space-y-2 p-3">
+                          <h3 className="font-display text-lg font-semibold text-ink">{variant}</h3>
+                          <p className="min-h-10 text-xs leading-5 text-muted">{room.description || roomType.description}</p>
+                          <p className="text-xs text-muted">№{room.room_number} · {count} шт. · этаж {room.floor ?? "—"}</p>
+                          <Button className="w-full" size="sm" onClick={() => chooseRoom(roomType, room)}>
+                            Выбрать <ArrowRight size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })}
         </div>
 
         <Card className="h-fit space-y-4 lg:sticky lg:top-24">
@@ -595,8 +620,10 @@ export function CheckoutPage() {
   const { toast } = useToast();
   const roomId = Number(params.get("room_id") || 0);
   const rateId = Number(params.get("rate_id") || 0);
-  const checkin = params.get("checkin") || addDaysISO(todayISO(), 7);
-  const checkout = params.get("checkout") || addDaysISO(todayISO(), 10);
+  const [checkin, setCheckin] = useState(params.get("checkin") || addDaysISO(todayISO(), 7));
+  const [checkout, setCheckout] = useState(params.get("checkout") || addDaysISO(todayISO(), 10));
+  const [adults, setAdults] = useState(Number(params.get("guests") || 2));
+  const [children, setChildren] = useState(0);
   const price = Number(params.get("price") || 0);
   const roomType = params.get("room_type") || "Номер";
   const roomNumber = params.get("room_number") || "";
@@ -649,8 +676,8 @@ export function CheckoutPage() {
       checkin_date: checkin,
       checkout_date: checkout,
       promo_code: promo || undefined,
-      adults: 1,
-      children: 0,
+      adults,
+      children,
       source: "SITE",
       points_to_use: appliedPoints,
     }, { headers: { "Idempotency-Key": idempotencyKey.current } }).then((response) => response.data),
@@ -684,6 +711,14 @@ export function CheckoutPage() {
             <Input label="Документ" value={form.document_number} onChange={(event) => setForm({ ...form, document_number: event.target.value })} placeholder="4510 123456" />
             <Input label="Телефон" value={form.phone ?? ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+7 900 111-22-33" />
             <Input label="Email" value={form.email ?? ""} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="guest@example.com" />
+            <Input label="Заезд" type="date" value={checkin} onChange={(event) => setCheckin(event.target.value)} />
+            <Input label="Выезд" type="date" value={checkout} onChange={(event) => setCheckout(event.target.value)} />
+            <Select label="Взрослые" value={adults} onChange={(event) => setAdults(Number(event.target.value))}>
+              {[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}</option>)}
+            </Select>
+            <Select label="Дети" value={children} onChange={(event) => setChildren(Number(event.target.value))}>
+              {[0, 1, 2, 3, 4].map((value) => <option key={value} value={value}>{value}</option>)}
+            </Select>
             <Input label="Время заезда" type="time" value={form.arrival_time} onChange={(event) => setForm({ ...form, arrival_time: event.target.value })} />
             <Input label="Держать бронь, мин" type="number" min={5} max={1440} value={form.hold_minutes} onChange={(event) => setForm({ ...form, hold_minutes: Number(event.target.value) })} />
           </div>
@@ -784,6 +819,9 @@ export function LoginPage() {
   const { user, login, verify2fa, register } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state as any)?.from as string | undefined;
+  const finishLogin = (nextUser: any) => navigate(returnTo || homeForRole(nextUser));
   const [tab, setTab] = useState<"login" | "register">("login");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [twofaToken, setTwofaToken] = useState("");
@@ -808,7 +846,7 @@ export function LoginPage() {
         setTwofaToken(result.twofa_token ?? "");
         return;
       }
-      if (result.user) navigate(homeForRole(result.user));
+      if (result.user) finishLogin(result.user);
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
@@ -819,18 +857,18 @@ export function LoginPage() {
         setTwofaToken(result.twofa_token ?? "");
         return;
       }
-      if (result.user) navigate(homeForRole(result.user));
+      if (result.user) finishLogin(result.user);
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
   const verifyMutation = useMutation({
     mutationFn: () => verify2fa(twofaToken, twofaCode),
-    onSuccess: (nextUser) => navigate(homeForRole(nextUser)),
+    onSuccess: (nextUser) => finishLogin(nextUser),
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
   const registerMutation = useMutation({
     mutationFn: () => register(registerForm),
-    onSuccess: (nextUser) => navigate(homeForRole(nextUser)),
+    onSuccess: (nextUser) => finishLogin(nextUser),
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
 

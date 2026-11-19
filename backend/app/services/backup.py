@@ -26,6 +26,10 @@ def run_backup_sync() -> dict:
             "--dbname",
             settings.database_admin_url,
             "-Fc",
+            "-n",
+            "public",
+            "--no-owner",
+            "--no-acl",
             "-f",
             str(path),
         ],
@@ -33,8 +37,14 @@ def run_backup_sync() -> dict:
         text=True,
         timeout=180,
     )
-    status = "success" if result.returncode == 0 else "error"
-    error = None if result.returncode == 0 else (result.stderr or "pg_dump failed")[:1000]
+    size = path.stat().st_size if path.exists() else 0
+    status = "success" if result.returncode == 0 and size > 0 else "error"
+    if status == "success":
+        error = None
+    elif size == 0:
+        error = "Резервная копия пустая — проверьте права на схему public"
+    else:
+        error = (result.stderr or "pg_dump failed")[:1000]
 
     with psycopg.connect(settings.database_admin_url) as conn:
         with conn.transaction():
@@ -56,7 +66,7 @@ def run_backup_sync() -> dict:
 
     return {
         "filename": path.name,
-        "size": path.stat().st_size if path.exists() else 0,
+        "size": size,
         "status": status,
         "error": error,
     }

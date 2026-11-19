@@ -17,6 +17,7 @@ from ..deps import get_current_user
 from ..password_policy import validate_password
 from ..schemas import (
     LoginRequest,
+    ProfileUpdate,
     RefreshRequest,
     RegisterRequest,
     SettingsUpdate,
@@ -351,8 +352,6 @@ async def verify_2fa(payload: TwoFactorVerifyRequest, request: Request, conn: As
 
 @router.post("/2fa/setup")
 async def setup_2fa(user: dict = Depends(get_current_user), conn: AsyncConnection = Depends(get_db)):
-    if user["role_code"] not in ("DB_ADMIN", "HOTEL_MANAGER"):
-        raise HTTPException(status_code=403, detail="2FA доступна только администратору БД и управляющему отелем")
     secret = pyotp.random_base32()
     await conn.execute(
         "UPDATE users SET totp_secret_enc = %s, totp_enabled = FALSE WHERE user_id = %s",
@@ -385,6 +384,41 @@ async def disable_2fa(payload: TwoFactorDisableRequest, user: dict = Depends(get
         raise HTTPException(status_code=400, detail="Неверный пароль")
     await conn.execute(
         "UPDATE users SET totp_enabled = FALSE, totp_secret_enc = NULL, totp_recovery_codes = NULL WHERE user_id = %s",
+        (user["user_id"],),
+    )
+    return {"ok": True}
+
+
+@router.post("/2fa/disable-with-code")
+async def disable_2fa_with_code(
+    payload: TwoFactorEnableRequest,
+    user: dict = Depends(get_current_user),
+    conn: AsyncConnection = Depends(get_db),
+):
+    secret = await _totp_secret(user["user_id"], conn)
+    if not secret:
+        raise HTTPException(status_code=400, detail="Двухфакторная аутентификация не настроена")
+
+    valid = pyotp.TOTP(secret).verify(payload.code, valid_window=1)
+    if not valid:
+        cur = await conn.execute(
+            "SELECT totp_recovery_codes FROM users WHERE user_id = %s", (user["user_id"],)
+        )
+        row = await cur.fetchone()
+        codes = (row or {}).get("totp_recovery_codes") or []
+        code_hash = hashlib.sha256(payload.code.strip().encode("utf-8")).hexdigest()
+        if code_hash in codes:
+            valid = True
+
+    if not valid:
+        raise HTTPException(status_code=400, detail="Неверный код")
+
+    await conn.execute(
+        """
+        UPDATE users
+        SET totp_enabled = FALSE, totp_secret_enc = NULL, totp_recovery_codes = NULL
+        WHERE user_id = %s
+        """,
         (user["user_id"],),
     )
     return {"ok": True}
@@ -489,6 +523,51 @@ async def register(payload: RegisterRequest, conn: AsyncConnection = Depends(get
     guest = await cur.fetchone()
     user["guest_id"] = guest["guest_id"] if guest else None
     return await issue_tokens(conn, user)
+
+
+@router.patch("/profile")
+async def update_profile(
+    payload: ProfileUpdate,
+    user: dict = Depends(get_current_user),
+    conn: AsyncConnection = Depends(get_db),
+):
+    cur = await conn.execute(
+        "SELECT user_id FROM users WHERE lower(email) = lower(%s) AND user_id <> %s",
+        (payload.email, user["user_id"]),
+    )
+    if await cur.fetchone():
+        raise HTTPException(status_code=409, detail="Этот email уже используется")
+    phone = phone_fields(payload.phone)
+    await conn.execute(
+        """
+        UPDATE users
+        SET full_name = %s, email = %s,
+            phone = COALESCE(%s, phone),
+            phone_enc = COALESCE(%s, phone_enc),
+            phone_hash = COALESCE(%s, phone_hash)
+        WHERE user_id = %s
+        """,
+        (payload.full_name, payload.email, phone["phone"], phone["phone_enc"], phone["phone_hash"], user["user_id"]),
+    )
+    await conn.execute(
+        """
+        UPDATE guests
+        SET full_name = %s, email = %s,
+            phone = COALESCE(%s, phone),
+            phone_enc = COALESCE(%s, phone_enc),
+            phone_hash = COALESCE(%s, phone_hash)
+        WHERE user_id = %s
+        """,
+        (payload.full_name, payload.email, phone["phone"], phone["phone_enc"], phone["phone_hash"], user["user_id"]),
+    )
+    await write_audit_event(
+        user_id=user["user_id"],
+        table_name="users",
+        action="UPDATE",
+        record_id=user["user_id"],
+        new_value={"full_name": payload.full_name, "email": payload.email},
+    )
+    return {"ok": True, "full_name": payload.full_name, "email": payload.email, "phone": phone["phone"]}
 
 
 @router.post("/change-password")

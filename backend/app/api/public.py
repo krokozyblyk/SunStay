@@ -250,7 +250,11 @@ async def availability(
                         'room_id', r.room_id,
                         'room_number', r.room_number,
                         'rate_id', rp.rate_id,
-                        'price_per_night', rp.price_per_night
+                        'price_per_night', rp.price_per_night,
+                        'image_url', r.image_url,
+                        'description', r.description,
+                        'variant_name', r.variant_name,
+                        'floor', r.floor
                     ) ORDER BY r.room_number), '[]'::json)
                  FROM rooms r
                  JOIN LATERAL (
@@ -428,6 +432,8 @@ async def create_public_booking(
             return existing["response"]
 
     guest_id = await find_or_create_guest(conn, payload)
+    if user and user.get("role_code") == "GUEST":
+        await conn.execute("UPDATE guests SET user_id = %s WHERE guest_id = %s", (user["user_id"], guest_id))
 
     cur = await conn.execute(
         """
