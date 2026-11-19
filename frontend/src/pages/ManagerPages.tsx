@@ -393,6 +393,16 @@ export function ManagerDashboardPage() {
         </div>
       </Card>
 
+      <Card className="mt-5">
+        <h2 className="font-display text-2xl font-semibold">Быстрые действия</h2>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Button variant="secondary" onClick={() => navigate("/app/bookings?new=1")}><Plus size={15} /> Новая бронь</Button>
+          <Button variant="secondary" onClick={() => navigate("/app/room-grid")}><CalendarDays size={15} /> Шахматка</Button>
+          <Button variant="secondary" onClick={() => navigate("/app/housekeeping")}><Check size={15} /> Задачи</Button>
+          <Button variant="secondary" onClick={() => navigate("/app/maintenance")}><AlertTriangle size={15} /> Техзаявки</Button>
+        </div>
+      </Card>
+
       <Modal
         open={auditOpen}
         title="Ночной аудит"
