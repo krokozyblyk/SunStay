@@ -24,6 +24,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, downloadFile, getErrorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
+import { useFeatures } from "../lib/features";
 import { useToast } from "../components/ui";
 import { Button, Card, Drawer, EmptyState, ErrorState, Input, KpiCard, Modal, PageHeader, Select, Spinner, StatusPill, Tabs, Textarea } from "../components/ui";
 import { formatDate, formatDateTime, formatMoney, LINE_TYPE_LABELS, PAYMENT_METHOD_LABELS, statusLabel } from "../lib/utils";
@@ -245,6 +246,7 @@ export function GuestBookingDetailPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const features = useFeatures();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reasonId, setReasonId] = useState<number | "">("");
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -374,6 +376,7 @@ export function GuestBookingDetailPage() {
         <div className="space-y-5">
           <Card>
             <h2 className="font-display text-2xl font-semibold">Проживание</h2>
+            {booking.room_image && <img src={booking.room_image} alt={booking.room_type} loading="lazy" className="mt-3 h-36 w-full rounded-xl object-cover" />}
             <div className="mt-4 space-y-2 text-sm text-muted">
               <div className="flex justify-between"><span>Заезд</span><span>{formatDate(booking.checkin_date)}</span></div>
               <div className="flex justify-between"><span>Выезд</span><span>{formatDate(booking.checkout_date)}</span></div>
@@ -389,13 +392,15 @@ export function GuestBookingDetailPage() {
               </div>
             )}
           </Card>
-          <Card>
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="font-display text-2xl font-semibold">Особые пожелания</h2>
-              <Button variant="ghost" size="sm" onClick={() => { setRequestsText(booking.special_requests ?? ""); setRequestsOpen(true); }}>Изменить</Button>
-            </div>
-            <p className="mt-3 text-sm text-muted">{booking.special_requests || "Пожелания не указаны."}</p>
-          </Card>
+          {features.special_requests && (
+            <Card>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-display text-2xl font-semibold">Особые пожелания</h2>
+                <Button variant="ghost" size="sm" onClick={() => { setRequestsText(booking.special_requests ?? ""); setRequestsOpen(true); }}>Изменить</Button>
+              </div>
+              <p className="mt-3 text-sm text-muted">{booking.special_requests || "Пожелания не указаны."}</p>
+            </Card>
+          )}
           {priceQuery.data && (
             <Card>
               <h2 className="font-display text-2xl font-semibold">Детализация цены</h2>
@@ -415,7 +420,7 @@ export function GuestBookingDetailPage() {
             <Button variant="secondary" className="w-full" onClick={() => navigate(`/checkout?room_id=${booking.room_id}&rate_id=${booking.rate_id}&checkin=${booking.checkin_date}&checkout=${booking.checkout_date}&price=${booking.price_per_night}&room_type=${encodeURIComponent(booking.room_type)}&room_number=${booking.room_number}&guests=${booking.adults + booking.children}`)}>Повторить бронирование</Button>
             {folio && <Button variant="secondary" className="w-full" onClick={() => downloadFile(api, `/guest/folios/${folio.folio_id}/pdf`, `folio-${folio.folio_id}.pdf`)}><Download size={15} /> Скачать счёт</Button>}
             {["NEW", "CONFIRMED"].includes(booking.status) && <Button variant="secondary" className="w-full" onClick={() => { setChangeCheckin(booking.checkin_date); setChangeCheckout(booking.checkout_date); setChangeOpen(true); }}>Изменить даты</Button>}
-            {booking.status === "CHECKED_OUT" && !review && (
+            {features.reviews && booking.status === "CHECKED_OUT" && !review && (
               <Button variant="secondary" className="w-full" onClick={() => setReviewOpen(true)}>
                 <Star size={15} /> Оставить отзыв
               </Button>
@@ -629,6 +634,7 @@ export function GuestServicesPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {(servicesQuery.data ?? []).map((service: any) => (
               <Card key={service.service_id} className="flex flex-col justify-between">
+                {service.image_url && <img src={service.image_url} alt={service.name} loading="lazy" className="mb-3 h-28 w-full rounded-xl object-cover" />}
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-terracotta/12 text-terracotta"><Sparkles size={20} /></span>

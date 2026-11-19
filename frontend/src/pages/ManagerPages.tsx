@@ -569,6 +569,30 @@ export function BookingsRegistryPage() {
   const [pageSize, setPageSize] = useState(settings.page_size || 25);
   const [selected, setSelected] = useState<number[]>([]);
   const [newOpen, setNewOpen] = useState(searchParams.get("new") === "1");
+  const [massOpen, setMassOpen] = useState(false);
+  const [massSearch, setMassSearch] = useState("");
+  const [massSelected, setMassSelected] = useState<number[]>([]);
+  const [massTemplate, setMassTemplate] = useState("");
+  const massGuestsQuery = useQuery({
+    queryKey: ["mass-guests", massSearch],
+    queryFn: () => api.get("/manager/search", { params: { q: massSearch } }).then((response) => response.data),
+    enabled: massOpen && massSearch.trim().length >= 2,
+  });
+  const templatesQuery = useQuery({
+    queryKey: ["message-templates"],
+    queryFn: () => api.get("/manager/message-templates").then((response) => response.data),
+    enabled: massOpen,
+  });
+  const massSendMutation = useMutation({
+    mutationFn: () => api.post("/manager/notifications/send", { guest_ids: massSelected, template_id: massTemplate ? Number(massTemplate) : null }),
+    onSuccess: (response) => {
+      toast(`Отправлено: ${response.data?.sent ?? massSelected.length}`, "success");
+      setMassOpen(false);
+      setMassSelected([]);
+      setMassTemplate("");
+    },
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
   const filters = { status: status === "all" ? undefined : status, search: search || undefined, date_from: dateFrom || undefined, date_to: dateTo || undefined, page, page_size: pageSize };
 
   const query = useQuery({
@@ -622,6 +646,7 @@ export function BookingsRegistryPage() {
         subtitle="Поиск, фильтры и массовые операции с бронями."
         actions={
           <>
+            <Button variant="secondary" onClick={() => setMassOpen(true)}>Рассылка</Button>
             <Button variant="secondary" onClick={() => downloadFile(api, "/manager/bookings/export", "bookings.csv", { ...filters, page: undefined, page_size: undefined })}><Download size={15} /> Экспорт CSV</Button>
             <Button onClick={() => setNewOpen(true)}><Plus size={15} /> Новая бронь</Button>
           </>
@@ -695,6 +720,34 @@ export function BookingsRegistryPage() {
         </div>
       )}
       <NewBookingModal open={newOpen} onClose={() => { setNewOpen(false); searchParams.delete("new"); setSearchParams(searchParams); }} />
+      <Modal
+        open={massOpen}
+        title="Рассылка гостям"
+        subtitle="Найдите гостей по имени и отправьте уведомление в кабинет."
+        onClose={() => setMassOpen(false)}
+        footer={<><Button variant="secondary" onClick={() => setMassOpen(false)}>Отмена</Button><Button onClick={() => massSendMutation.mutate()} disabled={massSendMutation.isPending || !massSelected.length || !massTemplate}>Отправить</Button></>}
+      >
+        <div className="space-y-3">
+          <Input label="Поиск гостя" value={massSearch} onChange={(event) => setMassSearch(event.target.value)} placeholder="Имя или email" />
+          {massSearch.trim().length >= 2 && (
+            <div className="max-h-48 space-y-1 overflow-y-auto">
+              {(massGuestsQuery.data?.guests ?? []).map((guest: any) => (
+                <label key={guest.guest_id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface2">
+                  <input type="checkbox" checked={massSelected.includes(guest.guest_id)} onChange={(event) => setMassSelected((current) => event.target.checked ? [...current, guest.guest_id] : current.filter((id) => id !== guest.guest_id))} />
+                  <span>{guest.full_name}</span>
+                  <span className="ml-auto text-xs text-muted">{guest.email}</span>
+                </label>
+              ))}
+              {!massGuestsQuery.isLoading && !(massGuestsQuery.data?.guests ?? []).length && <p className="text-xs text-muted">Ничего не найдено.</p>}
+            </div>
+          )}
+          <Select label="Шаблон" value={massTemplate} onChange={(event) => setMassTemplate(event.target.value)}>
+            <option value="">Выберите шаблон</option>
+            {(templatesQuery.data ?? []).map((template: any) => <option key={template.template_id} value={template.template_id}>{template.name}</option>)}
+          </Select>
+          <p className="text-xs text-muted">Выбрано гостей: {massSelected.length}</p>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -823,7 +876,7 @@ export function BookingDetailPage() {
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl bg-surface2 p-4"><p className="label">Гость</p><p className="mt-2 font-semibold">{booking.guest_name}</p><p className="text-sm text-muted"><SensitiveValue value={booking.document_number} /></p><p className="text-sm text-muted"><SensitiveValue value={booking.guest_phone} /></p><p className="text-sm text-muted">{booking.guest_email}</p></div>
-              <div className="rounded-xl bg-surface2 p-4"><p className="label">Проживание</p><p className="mt-2 text-sm text-muted">Заезд: {formatDate(booking.checkin_date)}</p><p className="text-sm text-muted">Выезд: {formatDate(booking.checkout_date)}</p><p className="text-sm text-muted">Время заезда: {String(booking.arrival_time ?? "—").slice(0, 5)}</p><p className="text-sm text-muted">Держать до: {booking.hold_until ? formatDateTime(booking.hold_until) : "—"}</p><p className="text-sm text-muted">Тариф: {booking.rate_name}</p><p className="text-sm text-muted">Гостей: {booking.adults + booking.children}</p>{booking.special_requests && <p className="mt-2 text-sm text-terracotta">Пожелания: {booking.special_requests}</p>}</div>
+              <div className="rounded-xl bg-surface2 p-4">{booking.room_image && <img src={booking.room_image} alt={booking.room_type} loading="lazy" className="mb-3 h-28 w-full rounded-lg object-cover" />}<p className="label">Проживание</p><p className="mt-2 text-sm text-muted">Заезд: {formatDate(booking.checkin_date)}</p><p className="text-sm text-muted">Выезд: {formatDate(booking.checkout_date)}</p><p className="text-sm text-muted">Время заезда: {String(booking.arrival_time ?? "—").slice(0, 5)}</p><p className="text-sm text-muted">Держать до: {booking.hold_until ? formatDateTime(booking.hold_until) : "—"}</p><p className="text-sm text-muted">Тариф: {booking.rate_name}</p><p className="text-sm text-muted">Гостей: {booking.adults + booking.children}</p>{booking.special_requests && <p className="mt-2 text-sm text-terracotta">Пожелания: {booking.special_requests}</p>}</div>
             </div>
           </Card>
           <Card>
@@ -1139,6 +1192,24 @@ export function WaitlistPage() {
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
+  const [convertEntry, setConvertEntry] = useState<any>(null);
+  const [convertForm, setConvertForm] = useState({ room_id: "", rate_id: "", document_number: "" });
+  const roomsQuery = useQuery({ queryKey: ["manager-rooms"], queryFn: () => api.get("/manager/rooms").then((response) => response.data) });
+  const ratesQuery = useQuery({ queryKey: ["manager-rates"], queryFn: () => api.get("/manager/rates").then((response) => response.data) });
+  const convertMutation = useMutation({
+    mutationFn: () => api.post(`/manager/waitlist/${convertEntry.waitlist_id}/convert`, {
+      room_id: Number(convertForm.room_id),
+      rate_id: Number(convertForm.rate_id),
+      document_number: convertForm.document_number,
+    }),
+    onSuccess: () => {
+      toast("Бронь создана из листа ожидания", "success");
+      setConvertEntry(null);
+      setConvertForm({ room_id: "", rate_id: "", document_number: "" });
+      queryClient.invalidateQueries({ queryKey: ["waitlist"] });
+    },
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
 
   const rows = query.data ?? [];
   const statusLabels: Record<string, string> = {
@@ -1183,13 +1254,33 @@ export function WaitlistPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {row.status === "WAITING" && <Button size="sm" variant="secondary" onClick={() => mutation.mutate({ id: row.waitlist_id, nextStatus: "NOTIFIED" })} disabled={mutation.isPending}>Уведомить</Button>}
-                {["WAITING", "NOTIFIED"].includes(row.status) && <Button size="sm" onClick={() => mutation.mutate({ id: row.waitlist_id, nextStatus: "CONVERTED" })} disabled={mutation.isPending}><Check size={14} /> Обработано</Button>}
+                {["WAITING", "NOTIFIED"].includes(row.status) && <Button size="sm" onClick={() => { setConvertEntry(row); setConvertForm({ room_id: "", rate_id: "", document_number: "" }); }}><Check size={14} /> Создать бронь</Button>}
                 {["WAITING", "NOTIFIED"].includes(row.status) && <Button size="sm" variant="ghost" onClick={() => mutation.mutate({ id: row.waitlist_id, nextStatus: "CANCELLED" })} disabled={mutation.isPending}><X size={14} /> Отменить</Button>}
               </div>
             </div>
           </Card>
         ))}
       </div>
+      <Modal
+        open={Boolean(convertEntry)}
+        title="Создать бронь из листа ожидания"
+        subtitle={convertEntry?.guest_name}
+        onClose={() => setConvertEntry(null)}
+        footer={<><Button variant="secondary" onClick={() => setConvertEntry(null)}>Отмена</Button><Button onClick={() => convertMutation.mutate()} disabled={convertMutation.isPending || !convertForm.room_id || !convertForm.rate_id || convertForm.document_number.length < 3}>Создать</Button></>}
+      >
+        <div className="space-y-3">
+          <Select label="Номер" value={convertForm.room_id} onChange={(event) => setConvertForm({ ...convertForm, room_id: event.target.value })}>
+            <option value="">Выберите номер</option>
+            {(roomsQuery.data ?? []).map((room: any) => <option key={room.room_id} value={room.room_id}>№{room.room_number} · {room.room_type} · {room.status}</option>)}
+          </Select>
+          <Select label="Тариф" value={convertForm.rate_id} onChange={(event) => setConvertForm({ ...convertForm, rate_id: event.target.value })}>
+            <option value="">Выберите тариф</option>
+            {(ratesQuery.data ?? []).map((rate: any) => <option key={rate.rate_id} value={rate.rate_id}>{rate.name} · {formatMoney(rate.price_per_night)}</option>)}
+          </Select>
+          <Input label="Документ гостя" value={convertForm.document_number} onChange={(event) => setConvertForm({ ...convertForm, document_number: event.target.value })} placeholder="4510 123456" />
+          <p className="text-xs text-muted">Гость: {convertEntry?.guest_name} · {formatDate(convertEntry?.checkin_date)} — {formatDate(convertEntry?.checkout_date)}</p>
+        </div>
+      </Modal>
     </div>
   );
 }

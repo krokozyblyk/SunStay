@@ -221,6 +221,21 @@ class SpecialRequestsUpdate(BaseModel):
     special_requests: str | None = Field(default=None, max_length=1000)
 
 
+class MassSendRequest(BaseModel):
+    guest_ids: list[int]
+    template_id: int | None = None
+    subject: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=2000)
+
+
+class WaitlistConvertRequest(BaseModel):
+    room_id: int
+    rate_id: int
+    document_number: str = Field(min_length=3, max_length=50)
+    checkin_date: date | None = None
+    checkout_date: date | None = None
+
+
 class ReviewCreate(BaseModel):
     booking_id: int
     rating: int = Field(ge=1, le=5)

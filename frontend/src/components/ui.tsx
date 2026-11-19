@@ -14,6 +14,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
@@ -200,20 +201,43 @@ export function Modal({
   footer?: ReactNode;
   size?: "sm" | "md" | "lg";
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
     const handler = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
+      if (event.key === "Tab" && panelRef.current) {
+        const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    const timer = window.setTimeout(() => {
+      const first = panelRef.current?.querySelector<HTMLElement>("input, select, textarea, button");
+      first?.focus();
+    }, 30);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      window.clearTimeout(timer);
+    };
   }, [open, onClose]);
 
   if (!open) return null;
   const widths = { sm: "max-w-md", md: "max-w-2xl", lg: "max-w-4xl" };
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className={cn("card w-full animate-fade-in overflow-hidden", widths[size])}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label={title} className={cn("card w-full animate-fade-in overflow-hidden", widths[size])}>
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div>
             <h2 className="font-display text-xl font-semibold text-ink">{title}</h2>

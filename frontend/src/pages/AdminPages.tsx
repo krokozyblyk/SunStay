@@ -71,6 +71,7 @@ const DIRECTORY_CONFIG: Record<string, { label: string; fields: DirectoryField[]
       { key: "name", label: "Название", required: true },
       { key: "capacity", label: "Вместимость", type: "number", required: true },
       { key: "description", label: "Описание", type: "textarea" },
+      { key: "image_url", label: "Ссылка на фото" },
     ],
   },
   rooms: {
@@ -104,6 +105,7 @@ const DIRECTORY_CONFIG: Record<string, { label: string; fields: DirectoryField[]
       { key: "unit_id", label: "Единица", type: "select", required: true },
       { key: "name", label: "Название", required: true },
       { key: "price", label: "Цена", type: "number", required: true },
+      { key: "image_url", label: "Ссылка на фото" },
     ],
   },
   "promo-codes": {
@@ -954,6 +956,16 @@ export function AdminBackupsPage() {
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
+  const verifyMutation = useMutation({
+    mutationFn: () => api.post("/admin/backups/verify").then((response) => response.data),
+    onSuccess: (data) => toast(data.ok ? `Копия цела · ${data.size} байт` : `Ошибка копии: ${data.error}`, data.ok ? "success" : "error"),
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
+  const testRestoreMutation = useMutation({
+    mutationFn: () => api.post("/admin/backups/test-restore").then((response) => response.data),
+    onSuccess: (data) => toast(data.ok ? `Тест восстановления: ${data.tables} таблиц, ${data.bookings} броней` : `Ошибка восстановления: ${data.error}`, data.ok ? "success" : "error"),
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
   const restoreMutation = useMutation({
     mutationFn: () => api.post("/admin/backups/restore"),
     onSuccess: () => {
@@ -986,6 +998,12 @@ export function AdminBackupsPage() {
             </Button>
             <Button variant="secondary" onClick={() => downloadFile(api, "/admin/backups/download", "sunstay_latest.dump")}>
               <Download size={15} /> Скачать копию
+            </Button>
+            <Button variant="secondary" onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending}>
+              Проверить копию
+            </Button>
+            <Button variant="secondary" onClick={() => testRestoreMutation.mutate()} disabled={testRestoreMutation.isPending}>
+              Тест восстановления
             </Button>
             <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
               <DatabaseBackup size={15} /> Создать сейчас
@@ -1151,6 +1169,20 @@ export function AdminSettingsPage() {
               <div className="mt-2 grid grid-cols-2 gap-1 font-mono">{recoveryCodes.map((code) => <span key={code}>{code}</span>)}</div>
             </div>
           )}
+        </Card>
+        <Card className="space-y-3">
+          <h2 className="font-display text-2xl font-semibold">Функции сайта</h2>
+          {[
+            ["feature.reviews", "Отзывы"],
+            ["feature.waitlist", "Лист ожидания"],
+            ["feature.loyalty", "Бонусные баллы"],
+            ["feature.special_requests", "Особые пожелания"],
+          ].map(([key, label]) => (
+            <Select key={key} label={label} value={String(form[key] ?? true)} onChange={(event) => setForm({ ...form, [key]: event.target.value === "true" })}>
+              <option value="true">Включено</option>
+              <option value="false">Выключено</option>
+            </Select>
+          ))}
         </Card>
         <Card className="space-y-4">
           <h2 className="font-display text-2xl font-semibold">4. Резервное копирование</h2>

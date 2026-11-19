@@ -28,6 +28,7 @@ import { api, getErrorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 import { useCurrency } from "../lib/currency";
+import { useFeatures } from "../lib/features";
 import { addDaysISO, formatDate, nightsBetween, todayISO } from "../lib/utils";
 import { Button, Card, ErrorState, Input, Select, Spinner, StatusPill, Textarea, useToast } from "../components/ui";
 import { homeForRole } from "../components/Layout";
@@ -38,7 +39,15 @@ const FALLBACK_ROOM_TYPES = [
   { room_type_id: 3, name: "Люкс", capacity: 4, min_price: 9900, description: "Просторный номер с гостиной зоной." },
 ];
 
-function RoomArt({ index = 0, className = "" }: { index?: number; className?: string }) {
+function RoomArt({ index = 0, className = "", imageUrl }: { index?: number; className?: string; imageUrl?: string | null }) {
+  if (imageUrl) {
+    return (
+      <div className={`relative overflow-hidden rounded-2xl bg-surface2 ${className}`}>
+        <img src={imageUrl} alt="Номер SunStay" loading="lazy" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+      </div>
+    );
+  }
   const palettes = [
     "from-[#d9c3a5] via-[#b88a67] to-[#5d4437]",
     "from-[#c8d5c8] via-[#8faF9b] to-[#2f5147]",
@@ -173,7 +182,10 @@ function WaitlistForm({ checkin, checkout, guests, roomTypeId }: { checkin: stri
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { lang } = useI18n();
+  const en = lang === "en";
   const { format } = useCurrency();
+  const features = useFeatures();
   const { data } = useQuery({
     queryKey: ["public-room-types"],
     queryFn: () => api.get("/public/room-types").then((response) => response.data),
@@ -198,48 +210,50 @@ export function LandingPage() {
         <div className="relative mx-auto grid max-w-[1240px] gap-10 px-4 pb-16 pt-14 md:grid-cols-[1.05fr_0.95fr] md:px-6 md:pb-24 md:pt-20">
           <div className="flex flex-col justify-center">
             <span className="badge w-fit bg-terracotta/12 text-terracotta">
-              <Star size={13} /> Бутик-отель в центре Петербурга
+              <Star size={13} /> {en ? "Boutique hotel in the heart of St. Petersburg" : "Бутик-отель в центре Петербурга"}
             </span>
             <h1 className="mt-5 max-w-2xl font-display text-5xl font-semibold leading-[1.05] tracking-tight text-ink md:text-6xl">
-              Отель, в который хочется вернуться
+              {en ? "A hotel you want to return to" : "Отель, в который хочется вернуться"}
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-muted">
-              48 номеров, тихий внутренний двор и внимательный сервис. Бронируйте напрямую — без скрытых комиссий и лишних звонков.
+              {en
+                ? "48 rooms, a quiet courtyard and attentive service. Book direct — no hidden fees or extra calls."
+                : "48 номеров, тихий внутренний двор и внимательный сервис. Бронируйте напрямую — без скрытых комиссий и лишних звонков."}
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button onClick={submitSearch}>
-                <Search size={17} /> Найти номер
+                <Search size={17} /> {en ? "Find a room" : "Найти номер"}
               </Button>
               <Link to="/login" className="btn-secondary">
-                Войти в кабинет
+                {en ? "Sign in" : "Войти в кабинет"}
               </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-6 text-sm text-muted">
-              <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-success" /> Безопасная оплата</span>
-              <span className="flex items-center gap-2"><BadgeCheck size={16} className="text-success" /> Подтверждение сразу</span>
-              <span className="flex items-center gap-2"><MapPin size={16} className="text-terracotta" /> Набережная Мойки, 12</span>
+              <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-success" /> {en ? "Secure payment" : "Безопасная оплата"}</span>
+              <span className="flex items-center gap-2"><BadgeCheck size={16} className="text-success" /> {en ? "Instant confirmation" : "Подтверждение сразу"}</span>
+              <span className="flex items-center gap-2"><MapPin size={16} className="text-terracotta" /> {en ? "Moika Embankment, 12" : "Набережная Мойки, 12"}</span>
             </div>
           </div>
           <div className="relative">
-            <RoomArt index={0} className="h-[360px] shadow-float md:h-[440px]" />
-            <Card className="absolute -bottom-8 left-4 right-4 md:left-8 md:right-8">
+            <RoomArt index={0} imageUrl={roomTypes[0]?.image_url} className="h-[360px] shadow-float md:h-[440px]" />
+            <Card className="mt-4">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <label className="col-span-1 flex flex-col gap-1.5">
-                  <span className="label">Заезд</span>
+                  <span className="label">{en ? "Check-in" : "Заезд"}</span>
                   <input type="date" value={checkin} onChange={(event) => setCheckin(event.target.value)} className="input" />
                 </label>
                 <label className="col-span-1 flex flex-col gap-1.5">
-                  <span className="label">Выезд</span>
+                  <span className="label">{en ? "Check-out" : "Выезд"}</span>
                   <input type="date" value={checkout} onChange={(event) => setCheckout(event.target.value)} className="input" />
                 </label>
                 <label className="col-span-1 flex flex-col gap-1.5">
-                  <span className="label">Гости</span>
+                  <span className="label">{en ? "Guests" : "Гости"}</span>
                   <select value={guests} onChange={(event) => setGuests(Number(event.target.value))} className="input">
-                    {[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value} гостя</option>)}
+                    {[1, 2, 3, 4].map((value) => <option key={value} value={value}>{en ? `${value} guests` : `${value} гостя`}</option>)}
                   </select>
                 </label>
                 <div className="col-span-1 flex items-end">
-                  <Button className="w-full" onClick={submitSearch}>Найти</Button>
+                  <Button className="w-full" onClick={submitSearch}>{en ? "Search" : "Найти"}</Button>
                 </div>
               </div>
             </Card>
@@ -288,7 +302,7 @@ export function LandingPage() {
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {roomTypes.map((room: any, index: number) => (
             <Card key={room.room_type_id} className="overflow-hidden p-0">
-              <RoomArt index={index} className="h-48 rounded-none" />
+              <RoomArt index={index} imageUrl={room.image_url} className="h-48 rounded-none" />
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -359,13 +373,14 @@ export function LandingPage() {
         </div>
       </section>
 
+      {features.reviews && (
       <section className="mx-auto max-w-[1240px] px-4 pb-20 md:px-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="label text-terracotta">Отзывы гостей</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold text-ink">Что говорят после проживания</h2>
+            <p className="label text-terracotta">{en ? "Guest reviews" : "Отзывы гостей"}</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-ink">{en ? "What guests say after their stay" : "Что говорят после проживания"}</h2>
           </div>
-          <p className="max-w-md text-sm leading-6 text-muted">Отзыв можно оставить в личном кабинете после выезда. Все отзывы проходят модерацию.</p>
+          <p className="max-w-md text-sm leading-6 text-muted">{en ? "You can leave a review after check-out. All reviews are moderated." : "Отзыв можно оставить в личном кабинете после выезда. Все отзывы проходят модерацию."}</p>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {(reviewsQuery.data ?? []).map((review: any) => (
@@ -381,6 +396,7 @@ export function LandingPage() {
           ))}
         </div>
       </section>
+      )}
     </div>
   );
 }
@@ -389,6 +405,7 @@ export function SearchPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { format } = useCurrency();
+  const features = useFeatures();
   const checkin = params.get("checkin") || addDaysISO(todayISO(), 7);
   const checkout = params.get("checkout") || addDaysISO(todayISO(), 10);
   const guests = Number(params.get("guests") || 2);
@@ -435,6 +452,7 @@ export function SearchPage() {
       room_type: roomType.name,
       room_number: room.room_number,
       guests: String(guests),
+      image: roomType.image_url || "",
     });
     navigate(`/checkout?${next.toString()}`);
   }
@@ -494,13 +512,13 @@ export function SearchPage() {
           {!query.isLoading && !results.length && (
             <>
               <Card className="py-10 text-center text-sm text-muted">На выбранные даты нет доступных номеров. Попробуйте изменить фильтры или встаньте в лист ожидания.</Card>
-              <WaitlistForm checkin={checkin} checkout={checkout} guests={guests} roomTypeId={roomTypeId} />
+              {features.waitlist && <WaitlistForm checkin={checkin} checkout={checkout} guests={guests} roomTypeId={roomTypeId} />}
             </>
           )}
           {results.map((roomType: any, index: number) => (
             <Card key={roomType.room_type_id} className="overflow-hidden p-0">
               <div className="grid md:grid-cols-[220px_1fr]">
-                <RoomArt index={index} className="h-44 rounded-none md:h-full" />
+                <RoomArt index={index} imageUrl={roomType.image_url} className="h-44 rounded-none md:h-full" />
                 <div className="p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -552,6 +570,7 @@ export function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { format } = useCurrency();
+  const features = useFeatures();
   const { toast } = useToast();
   const roomId = Number(params.get("room_id") || 0);
   const rateId = Number(params.get("rate_id") || 0);
@@ -560,6 +579,7 @@ export function CheckoutPage() {
   const price = Number(params.get("price") || 0);
   const roomType = params.get("room_type") || "Номер";
   const roomNumber = params.get("room_number") || "";
+  const roomImage = params.get("image") || "";
   const nights = nightsBetween(checkin, checkout);
   const [form, setForm] = useState({
     full_name: user?.full_name ?? "",
@@ -645,7 +665,7 @@ export function CheckoutPage() {
             <Input label="Время заезда" type="time" value={form.arrival_time} onChange={(event) => setForm({ ...form, arrival_time: event.target.value })} />
             <Input label="Держать бронь, мин" type="number" min={5} max={1440} value={form.hold_minutes} onChange={(event) => setForm({ ...form, hold_minutes: Number(event.target.value) })} />
           </div>
-          <Textarea label="Особые пожелания" value={form.special_requests} onChange={(event) => setForm({ ...form, special_requests: event.target.value })} placeholder="Ранний заезд, детская кроватка, аллергии, этаж…" rows={3} />
+          {features.special_requests && <Textarea label="Особые пожелания" value={form.special_requests} onChange={(event) => setForm({ ...form, special_requests: event.target.value })} placeholder="Ранний заезд, детская кроватка, аллергии, этаж…" rows={3} />}
           <label className="flex items-start gap-2 text-sm text-muted">
             <input type="checkbox" checked={form.pdn_consent} onChange={(event) => setForm({ ...form, pdn_consent: event.target.checked })} className="mt-1 h-4 w-4 accent-terracotta" />
             Согласен на обработку персональных данных
@@ -673,7 +693,7 @@ export function CheckoutPage() {
           {bookingMutation.isError && <ErrorState message={getErrorMessage(bookingMutation.error)} />}
         </Card>
         <Card className="h-fit space-y-4">
-          <RoomArt index={1} className="h-40" />
+          <RoomArt index={1} imageUrl={roomImage} className="h-40" />
           <div>
             <h2 className="font-display text-2xl font-semibold text-ink">{roomType}</h2>
             <p className="text-sm text-muted">Номер {roomNumber} · {nights} ночей</p>

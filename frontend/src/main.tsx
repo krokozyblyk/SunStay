@@ -8,6 +8,7 @@ import { I18nProvider } from "./lib/i18n";
 import { CurrencyProvider } from "./lib/currency";
 import { ThemeProvider } from "./lib/theme";
 import { ToastProvider } from "./components/ui";
+import { ErrorBoundary } from "./components/PageState";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -29,7 +30,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <AuthProvider>
               <ToastProvider>
                 <BrowserRouter basename={import.meta.env.BASE_URL}>
-                  <App />
+                  <ErrorBoundary>
+                    <App />
+                  </ErrorBoundary>
                 </BrowserRouter>
               </ToastProvider>
             </AuthProvider>

@@ -16,6 +16,13 @@ from ..utils import get_booking, row_to_dict, rows_to_dicts
 router = APIRouter(prefix="/public", tags=["public"])
 
 
+@router.get("/config")
+async def public_config(conn: AsyncConnection = Depends(get_db)):
+    cur = await conn.execute("SELECT key, value FROM system_settings WHERE key LIKE 'feature.%'")
+    flags = {row["key"].replace("feature.", ""): bool(row["value"]) for row in await cur.fetchall()}
+    return {"features": flags}
+
+
 @router.get("/room-types")
 async def room_types(conn: AsyncConnection = Depends(get_db)):
     cur = await conn.execute(
@@ -25,6 +32,7 @@ async def room_types(conn: AsyncConnection = Depends(get_db)):
             rt.name,
             rt.capacity,
             rt.description,
+            rt.image_url,
             (SELECT MIN(rp.price_per_night)
              FROM rate_plans rp
              WHERE rp.room_type_id = rt.room_type_id) AS min_price,
@@ -51,7 +59,7 @@ async def cancellation_reasons(conn: AsyncConnection = Depends(get_db)):
 async def services(conn: AsyncConnection = Depends(get_db)):
     cur = await conn.execute(
         """
-        SELECT s.service_id, s.name, s.price, su.name AS unit
+        SELECT s.service_id, s.name, s.price, s.image_url, su.name AS unit
         FROM services s
         JOIN service_units su ON su.unit_id = s.unit_id
         ORDER BY s.service_id
@@ -227,6 +235,7 @@ async def availability(
                 rt.name,
                 rt.capacity,
                 rt.description,
+                rt.image_url,
                 (SELECT MIN(rp.price_per_night)
                  FROM rate_plans rp
                  WHERE rp.room_type_id = rt.room_type_id

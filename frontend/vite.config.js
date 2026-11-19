@@ -6,6 +6,18 @@ export default defineConfig(function (_a) {
     return {
         base: env.VITE_BASE_PATH || "/",
         plugins: [react()],
+        build: {
+            rollupOptions: {
+                output: {
+                    manualChunks: {
+                        react: ["react", "react-dom", "react-router-dom"],
+                        charts: ["recharts"],
+                        query: ["@tanstack/react-query"],
+                        icons: ["lucide-react"],
+                    },
+                },
+            },
+        },
         server: {
             port: 5173,
             proxy: {

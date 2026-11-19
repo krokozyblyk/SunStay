@@ -110,6 +110,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
 
 export function PublicLayout() {
   const { user, logout } = useAuth();
+  const { lang } = useI18n();
   const navigate = useNavigate();
   return (
     <div className="min-h-screen">
@@ -117,8 +118,8 @@ export function PublicLayout() {
         <div className="mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-4 px-4 md:px-6">
           <Brand />
           <nav className="hidden items-center gap-6 text-sm font-medium text-muted md:flex">
-            <Link to="/" className="hover:text-ink">Номера</Link>
-            <Link to="/search" className="hover:text-ink">Бронирование</Link>
+            <Link to="/" className="hover:text-ink">{lang === "en" ? "Rooms" : "Номера"}</Link>
+            <Link to="/search" className="hover:text-ink">{lang === "en" ? "Booking" : "Бронирование"}</Link>
           </nav>
           <div className="flex items-center gap-2">
             <CurrencySelect />
@@ -131,7 +132,7 @@ export function PublicLayout() {
                   className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-ink sm:flex"
                 >
                   <Avatar name={user.full_name} className="h-7 w-7 text-[10px]" />
-                  {user.role_code === "GUEST" ? "Личный кабинет" : "Панель"}
+                  {user.role_code === "GUEST" ? (lang === "en" ? "My account" : "Личный кабинет") : (lang === "en" ? "Dashboard" : "Панель")}
                 </Link>
                 <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate("/"))}>
                   <LogOut size={15} /> Выйти
@@ -140,9 +141,9 @@ export function PublicLayout() {
             ) : (
               <>
                 <Link to="/login" className="hidden text-sm font-semibold text-ink hover:text-terracotta sm:block">
-                  Войти
+                  {lang === "en" ? "Sign in" : "Войти"}
                 </Link>
-                <Link to="/search" className="btn-primary btn-sm">Забронировать</Link>
+                <Link to="/search" className="btn-primary btn-sm">{lang === "en" ? "Book now" : "Забронировать"}</Link>
               </>
             )}
           </div>
@@ -391,6 +392,31 @@ function HotkeysModal({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
+function OnboardingTour() {
+  const [step, setStep] = useState(0);
+  const [hidden, setHidden] = useState(() => localStorage.getItem("sunstay_tour_hidden") === "1");
+  const steps = [
+    "Используйте меню слева, чтобы перейти в нужный раздел.",
+    "Иконка уведомлений показывает новые события по броням.",
+    "Настройки темы и языка — в правом верхнем углу.",
+  ];
+  if (hidden) return null;
+  return (
+    <div className="fixed bottom-5 right-5 z-[80] w-[300px] rounded-2xl border border-line bg-surface p-4 shadow-float">
+      <p className="label text-terracotta">Подсказка {step + 1} из {steps.length}</p>
+      <p className="mt-2 text-sm text-ink">{steps[step]}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {step < steps.length - 1 ? (
+          <Button size="sm" onClick={() => setStep(step + 1)}>Далее</Button>
+        ) : (
+          <Button size="sm" onClick={() => { localStorage.setItem("sunstay_tour_hidden", "1"); setHidden(true); }}>Понятно</Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={() => { localStorage.setItem("sunstay_tour_hidden", "1"); setHidden(true); }}>Скрыть подсказки</Button>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell() {
   const { user, logout } = useAuth();
   const { t, toggleLang } = useI18n();
@@ -551,6 +577,7 @@ export function AppShell() {
         <main className="mx-auto max-w-[1500px] animate-fade-in px-4 py-6 md:px-6 md:py-8">
           <Outlet />
         </main>
+        <OnboardingTour />
       </div>
       <HotkeysModal open={hotkeysOpen} onClose={() => setHotkeysOpen(false)} />
     </div>

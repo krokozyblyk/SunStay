@@ -13,7 +13,7 @@ from ..crypto import document_fields, hash_value, normalize_document, normalize_
 from ..db import get_db
 from ..deps import require_permission
 from ..events import publish, subscribe, unsubscribe
-from ..notifications import notify_guest_by_booking
+from ..notifications import notify_guest, notify_guest_by_booking
 from ..schemas import (
     CheckInRequest,
     CheckOutRequest,
@@ -28,6 +28,8 @@ from ..schemas import (
     BulkBookingAction,
     TemplateSendRequest,
     WaitlistUpdate,
+    WaitlistConvertRequest,
+    MassSendRequest,
 )
 from ..security import decode_access_token, role_code
 from ..services.pdf import folio_pdf
@@ -1133,3 +1135,119 @@ async def notify_guest_manual(
     from ..notifications import notify_guest
     await notify_guest(conn, guest_id, "MANUAL", subject, body)
     return {"ok": True}
+
+@router.post("/waitlist/{waitlist_id}/convert")
+async def convert_waitlist(
+    waitlist_id: int,
+    payload: WaitlistConvertRequest,
+    request: Request,
+    user: dict = Depends(require_permission("bookings:create")),
+    conn: AsyncConnection = Depends(get_db),
+):
+    cur = await conn.execute(
+        "SELECT * FROM waitlist_entries WHERE waitlist_id = %s AND status IN ('WAITING','NOTIFIED')",
+        (waitlist_id,),
+    )
+    entry = await cur.fetchone()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Заявка не найдена или уже обработана")
+
+    checkin = payload.checkin_date or entry["checkin_date"]
+    checkout = payload.checkout_date or entry["checkout_date"]
+    document = document_fields(payload.document_number)
+
+    cur = await conn.execute(
+        "SELECT guest_id FROM guests WHERE document_number_hash = %s",
+        (document["document_number_hash"],),
+    )
+    existing = await cur.fetchone()
+    if existing:
+        guest_id = existing["guest_id"]
+    else:
+        cur = await conn.execute(
+            """
+            INSERT INTO guests (
+                full_name, document_number, document_number_enc, document_number_hash,
+                phone, phone_enc, phone_hash, email, pdn_consent
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+            RETURNING guest_id
+            """,
+            (
+                entry["guest_name"],
+                document["document_number"],
+                document["document_number_enc"],
+                document["document_number_hash"],
+                entry["phone_masked"],
+                entry["phone_enc"],
+                entry["phone_hash"],
+                entry["email"],
+            ),
+        )
+        guest_id = (await cur.fetchone())["guest_id"]
+
+    cur = await conn.execute(
+        """
+        SELECT fn_create_booking(
+            %s::integer, %s::integer, %s::integer, %s::date, %s::date,
+            NULL, 'PHONE', %s::integer, %s::integer, %s::integer, %s::varchar
+        ) AS booking_id
+        """,
+        (
+            guest_id,
+            payload.room_id,
+            payload.rate_id,
+            checkin,
+            checkout,
+            entry["adults"],
+            entry["children"],
+            user["user_id"],
+            request.client.host if request.client else "",
+        ),
+    )
+    booking_id = (await cur.fetchone())["booking_id"]
+    await conn.execute(
+        """
+        UPDATE waitlist_entries
+        SET status = 'CONVERTED', converted_booking_id = %s,
+            processed_by = %s, processed_at = now()
+        WHERE waitlist_id = %s
+        """,
+        (booking_id, user["user_id"], waitlist_id),
+    )
+    booking = await get_booking(conn, booking_id)
+    await notify_guest_by_booking(
+        conn,
+        booking,
+        "BOOKING_CREATED",
+        "Бронь создана",
+        f"Ваша бронь #{booking_id} создана по листу ожидания.",
+    )
+    await publish("bookings", {"id": booking_id, "status": "NEW"})
+    return booking
+
+
+@router.post("/notifications/send")
+async def send_mass_notification(
+    payload: MassSendRequest,
+    user: dict = Depends(require_permission("bookings:update")),
+    conn: AsyncConnection = Depends(get_db),
+):
+    subject = payload.subject
+    body = payload.body
+    if payload.template_id:
+        cur = await conn.execute(
+            "SELECT * FROM message_templates WHERE template_id = %s", (payload.template_id,)
+        )
+        template = await cur.fetchone()
+        if not template:
+            raise HTTPException(status_code=404, detail="Шаблон не найден")
+        subject = subject or template["subject"]
+        body = body or template["body"]
+    if not subject or not body:
+        raise HTTPException(status_code=400, detail="Укажите тему и текст сообщения")
+
+    sent = 0
+    for guest_id in payload.guest_ids:
+        if await notify_guest(conn, guest_id, "MANUAL", subject, body):
+            sent += 1
+    return {"ok": True, "sent": sent}

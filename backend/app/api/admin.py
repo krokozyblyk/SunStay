@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import subprocess
 from datetime import datetime
@@ -36,7 +37,7 @@ DIRECTORIES: dict[str, dict[str, Any]] = {
     "room-types": {
         "table": "room_types",
         "pk": "room_type_id",
-        "fields": ["name", "capacity", "description"],
+        "fields": ["name", "capacity", "description", "image_url"],
         "permission": "rooms:manage",
     },
     "rooms": {
@@ -63,7 +64,7 @@ DIRECTORIES: dict[str, dict[str, Any]] = {
     "services": {
         "table": "services",
         "pk": "service_id",
-        "fields": ["unit_id", "name", "price"],
+        "fields": ["unit_id", "name", "price", "image_url"],
         "permission": "services:manage",
     },
     "promo-codes": {
@@ -880,3 +881,69 @@ async def revoke_session(
     if not await cur.fetchone():
         raise HTTPException(status_code=404, detail="Сессия не найдена")
     return {"ok": True}
+
+
+@router.post("/backups/verify")
+async def verify_backup(user: dict = Depends(require_permission("backup:manage"))):
+    path = backup_path()
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Резервная копия не найдена")
+    checksum = hashlib.sha256(path.read_bytes()).hexdigest()
+    result = await asyncio.to_thread(
+        subprocess.run,
+        ["pg_restore", "--list", str(path)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    preview = (result.stdout or "").splitlines()[:10]
+    return {
+        "ok": result.returncode == 0,
+        "size": path.stat().st_size,
+        "sha256": checksum,
+        "preview": preview,
+        "error": None if result.returncode == 0 else (result.stderr or "")[:500],
+    }
+
+
+@router.post("/backups/test-restore")
+async def test_restore(user: dict = Depends(require_permission("backup:manage"))):
+    path = backup_path()
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Резервная копия не найдена")
+    settings = get_settings()
+    admin_url = settings.database_admin_url
+    temp_db = "hotel_restore_check"
+
+    def run() -> dict:
+        subprocess.run(["psql", admin_url, "-c", f"DROP DATABASE IF EXISTS {temp_db};"], capture_output=True, text=True, timeout=60)
+        created = subprocess.run(["psql", admin_url, "-c", f"CREATE DATABASE {temp_db};"], capture_output=True, text=True, timeout=60)
+        if created.returncode != 0:
+            return {"ok": False, "error": (created.stderr or "")[:500]}
+        restored = subprocess.run(
+            ["pg_restore", "--no-owner", "--dbname", admin_url.rsplit("/", 1)[0] + "/" + temp_db, str(path)],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        tables = subprocess.run(
+            ["psql", admin_url.rsplit("/", 1)[0] + "/" + temp_db, "-t", "-A", "-c", "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        bookings = subprocess.run(
+            ["psql", admin_url.rsplit("/", 1)[0] + "/" + temp_db, "-t", "-A", "-c", "SELECT count(*) FROM bookings;"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        subprocess.run(["psql", admin_url, "-c", f"DROP DATABASE IF EXISTS {temp_db};"], capture_output=True, text=True, timeout=60)
+        return {
+            "ok": restored.returncode == 0,
+            "tables": (tables.stdout or "").strip(),
+            "bookings": (bookings.stdout or "").strip(),
+            "error": None if restored.returncode == 0 else (restored.stderr or "")[:500],
+        }
+
+    return await asyncio.to_thread(run)

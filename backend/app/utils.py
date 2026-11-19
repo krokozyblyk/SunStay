@@ -67,6 +67,7 @@ async def get_booking(conn: AsyncConnection, booking_id: int) -> dict[str, Any]:
             g.email AS guest_email,
             r.room_number,
             rt.name AS room_type,
+            rt.image_url AS room_image,
             rp.name AS rate_name,
             rp.price_per_night,
             pc.code AS promo_code,

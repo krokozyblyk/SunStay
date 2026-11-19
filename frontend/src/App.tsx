@@ -1,5 +1,7 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell, PublicLayout, RequireAuth, RequireRole } from "./components/Layout";
+import { PageSkeleton } from "./components/PageState";
 import { LandingPage, SearchPage, CheckoutPage, ConfirmationPage, LoginPage } from "./pages/PublicPages";
 import {
   GuestBookingDetailPage,
@@ -19,24 +21,25 @@ import {
   FloorPlanPage,
   WaitlistPage,
 } from "./pages/ManagerPages";
-import { ReportsPage } from "./pages/ReportsPage";
-import { ConsumablesPage, HousekeepingBoardPage, MaintenancePage } from "./pages/OperationsPages";
-import {
-  AdminAuditPage,
-  AdminBackupsPage,
-  AdminDirectoriesPage,
-  AdminReviewsPage,
-  AdminSessionsPage,
-  AdminSettingsPage,
-  AdminUsersPage,
-  EmployeesPage,
-} from "./pages/AdminPages";
+const ReportsPage = lazy(() => import("./pages/ReportsPage").then((module) => ({ default: module.ReportsPage })));
+const HousekeepingBoardPage = lazy(() => import("./pages/OperationsPages").then((module) => ({ default: module.HousekeepingBoardPage })));
+const MaintenancePage = lazy(() => import("./pages/OperationsPages").then((module) => ({ default: module.MaintenancePage })));
+const ConsumablesPage = lazy(() => import("./pages/OperationsPages").then((module) => ({ default: module.ConsumablesPage })));
+const AdminAuditPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.AdminAuditPage })));
+const AdminBackupsPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.AdminBackupsPage })));
+const AdminDirectoriesPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.AdminDirectoriesPage })));
+const AdminReviewsPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.AdminReviewsPage })));
+const AdminSessionsPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.AdminSessionsPage })));
+const AdminSettingsPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.AdminSettingsPage })));
+const AdminUsersPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.AdminUsersPage })));
+const EmployeesPage = lazy(() => import("./pages/AdminPages").then((module) => ({ default: module.EmployeesPage })));
 
 const STAFF = ["MANAGER", "HOUSEKEEPING", "HOTEL_MANAGER", "DB_ADMIN"];
 const MANAGERS = ["MANAGER", "HOTEL_MANAGER", "DB_ADMIN"];
 
 export default function App() {
   return (
+    <Suspense fallback={<PageSkeleton />}>
     <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
@@ -98,5 +101,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

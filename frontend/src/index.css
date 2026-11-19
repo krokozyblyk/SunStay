@@ -237,3 +237,44 @@
     @apply focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:ring-offset-2 focus:ring-offset-canvas;
   }
 }
+
+/* Custom checkboxes */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--border);
+  border-radius: 0.45rem;
+  background-color: var(--surface);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  vertical-align: middle;
+}
+input[type="checkbox"]::before {
+  content: "";
+  width: 0.62rem;
+  height: 0.62rem;
+  transform: scale(0);
+  transition: transform 0.12s ease;
+  background: var(--terracotta);
+  clip-path: polygon(14% 44%, 0 58%, 38% 96%, 100% 18%, 84% 4%, 37% 64%);
+}
+input[type="checkbox"]:checked {
+  border-color: var(--terracotta);
+  background-color: rgb(var(--terracotta-rgb) / 0.08);
+}
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(var(--terracotta-rgb) / 0.2);
+}
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
