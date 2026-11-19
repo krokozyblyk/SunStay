@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, Star } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, getErrorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -25,6 +25,7 @@ const FALLBACK = [
 
 export function RoomPage() {
   const { id } = useParams();
+  const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,8 +42,21 @@ export function RoomPage() {
     queryFn: () => api.get("/public/room-types").then((response) => response.data),
   });
   if (query.isLoading) return <div className="mx-auto max-w-6xl px-4 py-16"><Spinner /></div>;
-  if (query.isError || !query.data) return <div className="mx-auto max-w-6xl px-4 py-16"><ErrorState message="Номер не найден" /></div>;
-  const room = query.data;
+  const fallbackRoom = {
+    room_id: Number(id),
+    room_number: params.get("room_number") || "",
+    room_type: params.get("room_type") || "Стандарт",
+    floor: null,
+    capacity: Number(params.get("guests") || 2),
+    description: params.get("description") || "",
+    variant_name: params.get("variant") || "",
+    image_url: params.get("image") || "",
+    price_per_night: Number(params.get("price") || 0),
+    rate_id: Number(params.get("rate_id") || 1),
+    amenities: [],
+    reviews: [],
+  };
+  const room = query.data ?? fallbackRoom;
   const gallery = Array.from(new Set([
     room.image_url,
     roomImageByName(room.room_type),
