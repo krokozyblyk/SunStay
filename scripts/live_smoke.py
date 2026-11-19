@@ -85,13 +85,14 @@ check("public reviews visible", status == 200 and any(r.get("title") == "Live sm
 
 # Backups
 status, backups = req("GET", "/admin/backups", headers=dba)
-check("backups list", status == 200 and backups.get("file", {}).get("size", 0) > 0, str(backups)[:200])
-status, verify = req("POST", "/admin/backups/verify", headers=dba)
-check("backup verify", status == 200 and verify.get("ok") is True, str(verify)[:200])
-status, restore = req("POST", "/admin/backups/test-restore", headers=dba)
-check("backup test-restore", status == 200 and restore.get("ok") is True, str(restore)[:300])
-status, created = req("POST", "/admin/backups", headers=dba)
-check("backup create", status == 200 and created.get("size", 0) > 0, str(created)[:200])
+check("backups list", status == 200 and isinstance(backups, dict) and backups.get("file", {}).get("size", 0) > 0, f"{status} {str(backups)[:250]}")
+if isinstance(backups, dict) and backups.get("file", {}).get("size", 0) > 0:
+    status, verify = req("POST", "/admin/backups/verify", headers=dba)
+    check("backup verify", status == 200 and isinstance(verify, dict) and verify.get("ok") is True, f"{status} {str(verify)[:250]}")
+    status, restore = req("POST", "/admin/backups/test-restore", headers=dba)
+    check("backup test-restore", status == 200 and isinstance(restore, dict) and restore.get("ok") is True, f"{status} {str(restore)[:350]}")
+    status, created = req("POST", "/admin/backups", headers=dba)
+    check("backup create", status == 200 and isinstance(created, dict) and created.get("size", 0) > 0, f"{status} {str(created)[:250]}")
 
 # Waitlist notified -> guest notification
 status, wl = req("POST", "/public/waitlist", {
