@@ -9,7 +9,19 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping API
-        run: curl -sS --max-time 60 https://sunstay-api.onrender.com/api/health || true
+      - name: Diagnose API
+        run: |
+          echo "### API diagnostics" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          curl -sS -i --max-time 90 \
+            -H "Origin: https://krokozyblyk.github.io" \
+            https://sunstay-api.onrender.com/api/health >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
       - name: Ping analytics
-        run: curl -sS --max-time 60 https://sunstay-analytics.onrender.com/api/openapi.json || true
+        run: |
+          echo "### Analytics" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          curl -sS -i --max-time 90 \
+            -H "Origin: https://krokozyblyk.github.io" \
+            https://sunstay-analytics.onrender.com/api/openapi.json >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
