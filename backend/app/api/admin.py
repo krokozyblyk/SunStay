@@ -946,11 +946,14 @@ async def test_restore(user: dict = Depends(require_permission("backup:manage"))
             timeout=60,
         )
         subprocess.run(["psql", admin_url, "-c", f"DROP DATABASE IF EXISTS {temp_db};"], capture_output=True, text=True, timeout=60)
+        table_count = (tables.stdout or "").strip()
+        booking_count = (bookings.stdout or "").strip()
+        ok = bool(table_count.isdigit() and booking_count.isdigit() and int(table_count) > 0)
         return {
-            "ok": restored.returncode == 0,
-            "tables": (tables.stdout or "").strip(),
-            "bookings": (bookings.stdout or "").strip(),
-            "error": None if restored.returncode == 0 else (restored.stderr or "")[:500],
+            "ok": ok,
+            "tables": table_count,
+            "bookings": booking_count,
+            "error": None if ok else (restored.stderr or "")[:500],
         }
 
     return await asyncio.to_thread(run)
