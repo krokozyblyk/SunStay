@@ -4,7 +4,7 @@ import asyncio
 import json
 from datetime import date, datetime, time, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from psycopg import AsyncConnection
 from psycopg.types.json import Jsonb
@@ -879,6 +879,62 @@ async def close_folio(
     return {"ok": True, "status": "CLOSED"}
 
 
+@router.post("/folios/bulk-close")
+async def bulk_close_folios(
+    request: Request,
+    payload: dict = Body(...),
+    user: dict = Depends(require_permission("folios:manage")),
+    conn: AsyncConnection = Depends(get_db),
+):
+    ids = [int(value) for value in payload.get("folio_ids", []) if str(value).isdigit()]
+    if not ids:
+        raise HTTPException(status_code=400, detail="Выберите хотя бы один счёт")
+    cur = await conn.execute(
+        """
+        UPDATE folios SET status = 'CLOSED', closed_at = now()
+        WHERE status = 'OPEN' AND folio_id = ANY(%s)
+        RETURNING folio_id
+        """,
+        (ids,),
+    )
+    closed = [row["folio_id"] for row in await cur.fetchall()]
+    return {"closed": closed, "count": len(closed)}
+
+
+@router.post("/payments/bulk-refund")
+async def bulk_refund_payments(
+    request: Request,
+    payload: dict = Body(...),
+    user: dict = Depends(require_permission("payments:refund")),
+    conn: AsyncConnection = Depends(get_db),
+):
+    ids = [int(value) for value in payload.get("folio_ids", []) if str(value).isdigit()]
+    amount = payload.get("amount")
+    reason = payload.get("reason") or "Массовый возврат"
+    if not ids or not amount or float(amount) <= 0:
+        raise HTTPException(status_code=400, detail="Укажите счета и сумму возврата")
+    refunded: list[int] = []
+    for folio_id in ids:
+        cur = await conn.execute(
+            "SELECT payment_id FROM payments WHERE folio_id = %s ORDER BY payment_id DESC LIMIT 1",
+            (folio_id,),
+        )
+        payment = await cur.fetchone()
+        if not payment:
+            continue
+        cur = await conn.execute(
+            "SELECT fn_refund_payment(%s::integer, %s::numeric, %s::varchar, %s::integer, %s::varchar) AS refund_id",
+            (
+                payment["payment_id"], amount, reason, user["user_id"],
+                request.client.host if request.client else "",
+            ),
+        )
+        row = await cur.fetchone()
+        if row and row["refund_id"]:
+            refunded.append(folio_id)
+    return {"refunded": refunded, "count": len(refunded)}
+
+
 @router.post("/night-audit")
 async def night_audit(
     payload: NightAuditRequest,
@@ -1218,6 +1274,35 @@ async def convert_waitlist(
     checkout = payload.checkout_date or entry["checkout_date"]
     document = document_fields(payload.document_number)
 
+    # A rate selected in the UI can belong to another season than the waitlist
+    # dates. Always resolve to a rate valid for these dates so converting a
+    # waitlist entry never fails with "Тариф не действует на выбранные даты".
+    cur = await conn.execute(
+        """
+        SELECT rp.rate_id FROM rate_plans rp
+        JOIN rooms r ON r.room_type_id = rp.room_type_id
+        WHERE r.room_id = %s AND rp.rate_id = %s
+          AND %s >= rp.season_start AND %s - 1 <= rp.season_end
+        """,
+        (payload.room_id, payload.rate_id, checkin, checkout),
+    )
+    valid_rate = await cur.fetchone()
+    if not valid_rate:
+        cur = await conn.execute(
+            """
+            SELECT rp.rate_id FROM rate_plans rp
+            JOIN rooms r ON r.room_type_id = rp.room_type_id
+            WHERE r.room_id = %s
+              AND %s >= rp.season_start AND %s - 1 <= rp.season_end
+            ORDER BY rp.price_per_night LIMIT 1
+            """,
+            (payload.room_id, checkin, checkout),
+        )
+        valid_rate = await cur.fetchone()
+        if not valid_rate:
+            raise HTTPException(status_code=400, detail="Нет тарифа на выбранные даты")
+    rate_id = valid_rate["rate_id"]
+
     cur = await conn.execute(
         "SELECT guest_id FROM guests WHERE document_number_hash = %s",
         (document["document_number_hash"],),
@@ -1257,7 +1342,7 @@ async def convert_waitlist(
         (
             guest_id,
             payload.room_id,
-            payload.rate_id,
+            rate_id,
             checkin,
             checkout,
             entry["adults"],

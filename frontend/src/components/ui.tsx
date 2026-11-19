@@ -17,13 +17,14 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type ChangeEvent,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
-import { cn, initials, statusClass, statusLabel } from "../lib/utils";
+import { cn, initials, statusClass, statusColor, statusLabel } from "../lib/utils";
 import { useI18n } from "../lib/i18n";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -121,10 +122,12 @@ export function Badge({
   children,
   tone = "neutral",
   className,
+  style,
 }: {
   children: ReactNode;
   tone?: "neutral" | "success" | "warning" | "danger" | "info" | "forest";
   className?: string;
+  style?: CSSProperties;
 }) {
   const tones = {
     neutral: "bg-surface2 text-muted",
@@ -134,11 +137,11 @@ export function Badge({
     info: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
     forest: "bg-forest/10 text-forest dark:bg-white/10 dark:text-ink",
   };
-  return <span className={cn("badge", tones[tone], className)}>{children}</span>;
+  return <span className={cn("badge", tones[tone], className)} style={style}>{children}</span>;
 }
 
 export function StatusPill({ status }: { status?: string | null }) {
-  return <span className={cn("status-pill", statusClass(status))}>{statusLabel(status)}</span>;
+  return <span className={cn("status-pill", statusClass(status))} style={{ color: statusColor(status) }}>{statusLabel(status)}</span>;
 }
 
 export function KpiCard({
@@ -188,13 +191,18 @@ export function Avatar({ name, className }: { name?: string | null; className?: 
 export function Input({
   label,
   className,
+  numeric,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
-  const isNumber = props.type === "number";
-  const display = (value: unknown) => (value === 0 || value === null || value === undefined ? "" : String(value));
+}: InputHTMLAttributes<HTMLInputElement> & { label?: string; numeric?: boolean }) {
+  const isNumber = props.type === "number" || numeric;
+  const focused = useRef(false);
+  const display = (value: unknown) => (value === null || value === undefined ? "" : String(value));
   const [text, setText] = useState(() => display(props.value));
+
+  // Only sync from the outside when the field is not being typed in. This
+  // prevents the caret/focus from jumping away after every digit.
   useEffect(() => {
-    if (isNumber) setText(display(props.value));
+    if (isNumber && !focused.current) setText(display(props.value));
   }, [props.value, isNumber]);
 
   const handleNumber = (event: ChangeEvent<HTMLInputElement>) => {
@@ -203,7 +211,12 @@ export function Input({
       next = next.replace(/^0+/, "") || "0";
     }
     setText(next);
-    props.onChange?.({ ...event, target: { ...event.target, value: next } } as ChangeEvent<HTMLInputElement>);
+    const synthetic = {
+      ...event,
+      target: { ...event.target, value: next },
+      currentTarget: { ...event.currentTarget, value: next },
+    } as ChangeEvent<HTMLInputElement>;
+    props.onChange?.(synthetic);
   };
 
   return (
@@ -211,8 +224,16 @@ export function Input({
       {label && <span className="label">{label}</span>}
       <input
         {...props}
+        type={numeric ? "text" : props.type}
+        inputMode={numeric ? "numeric" : props.inputMode}
         className={cn("input", className)}
         value={isNumber ? text : props.value}
+        onFocus={(event) => { focused.current = true; props.onFocus?.(event); }}
+        onBlur={(event) => {
+          focused.current = false;
+          if (isNumber) setText(display(props.value));
+          props.onBlur?.(event);
+        }}
         onChange={isNumber ? handleNumber : props.onChange}
       />
     </label>

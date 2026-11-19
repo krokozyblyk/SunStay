@@ -157,6 +157,18 @@ export function statusClass(status?: string | null) {
   return map[tone];
 }
 
+export function statusColor(status?: string | null) {
+  const tone = statusTone(status);
+  const map: Record<StatusTone, string> = {
+    success: "#2f9d6d",
+    warning: "#d99420",
+    danger: "#e05252",
+    info: "#3d9bc4",
+    neutral: "#8b938c",
+  };
+  return map[tone];
+}
+
 export function statusTextClass(status?: string | null) {
   const tone = statusTone(status);
   const map: Record<StatusTone, string> = {
@@ -210,15 +222,17 @@ export function resolveImage(value?: string | null, fallback = "") {
 
 export function roomImageByName(name?: string | null) {
   const value = (name ?? "").toLowerCase();
-  if (value.includes("стандарт")) return "images/room-standard.jpg";
-  if (value.includes("комфорт")) return "images/room-comfort.jpg";
-  if (value.includes("люкс")) return "images/room-lux.jpg";
-  return "images/room-standard.jpg";
+  if (value.includes("стандарт")) return "images/rooms/standard-4.jpg";
+  if (value.includes("комфорт")) return "images/rooms/comfort-4.jpg";
+  if (value.includes("люкс")) return "images/rooms/lux-4.jpg";
+  return "images/rooms/standard-4.jpg";
 }
 
 export function serviceImageByName(name?: string | null) {
   const value = (name ?? "").toLowerCase();
-  if (value.includes("завтрак")) return "images/service-breakfast.jpg";
-  if (value.includes("спа") || value.includes("массаж")) return "images/service-spa.jpg";
+  if (value.includes("завтрак")) return "images/services/breakfast.jpg";
+  if (value.includes("парков")) return "images/services/parking.jpg";
+  if (value.includes("трансфер") || value.includes("аэропорт")) return "images/services/transfer.jpg";
+  if (value.includes("спа") || value.includes("массаж")) return "images/services/spa.jpg";
   return "images/service-other.jpg";
 }

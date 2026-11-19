@@ -740,7 +740,7 @@ export function GuestProfilePage() {
           <Input label="ФИО" value={profileForm.full_name} onChange={(event) => setProfileForm({ ...profileForm, full_name: event.target.value })} />
           <Input label="Email" value={profileForm.email} onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })} />
           <Input label="Телефон" value={profileForm.phone ?? ""} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} />
-          <Button onClick={() => profileMutation.mutate()} disabled={profileMutation.isPending || profileForm.full_name.length < 3 || !profileForm.email}>
+          <Button onClick={() => profileMutation.mutate()} disabled={profileMutation.isPending || profileForm.full_name.trim().length < 3 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(profileForm.email)}>
             {profileMutation.isPending ? "Сохраняем…" : "Сохранить данные"}
           </Button>
         </Card>

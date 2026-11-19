@@ -76,6 +76,7 @@ import {
   resolveImage,
   roomImageByName,
   statusClass,
+  statusColor,
   statusLabel,
   statusTextClass,
   todayISO,
@@ -99,7 +100,7 @@ function NewGuestForm({ onCreated }: { onCreated: (guest: any) => void }) {
     <div className="space-y-3 rounded-xl border border-line bg-surface2 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <Input label="ФИО" value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} />
-        <Input label="Документ" value={form.document_number} onChange={(event) => setForm({ ...form, document_number: event.target.value })} />
+        <Input label="Документ" numeric value={form.document_number} onChange={(event) => setForm({ ...form, document_number: event.target.value })} />
         <Input label="Телефон" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
         <Input label="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
       </div>
@@ -518,7 +519,7 @@ export function RoomGridPage() {
                 <tr key={room.room_id} className="border-t border-line">
                   <td className="sticky left-0 z-10 bg-surface px-4 py-2.5">
                     <p className="font-semibold text-ink">№{room.room_number}</p>
-                    <p className={`text-[11px] ${statusTextClass(room.status)}`}>{room.room_type} · {statusLabel(room.status)}</p>
+                    <p className={`text-[11px] ${statusTextClass(room.status)}`} style={{ color: statusColor(room.status) }}>{room.room_type} · {statusLabel(room.status)}</p>
                   </td>
                   {days.map((day) => {
                     const booking = bookingFor(room.room_id, day);
@@ -967,7 +968,7 @@ export function BookingDetailPage() {
       </Modal>
       <Modal open={checkInOpen} title="Заселение гостя" subtitle="Проверьте документ и при необходимости примите депозит." onClose={() => setCheckInOpen(false)} footer={<><Button variant="secondary" onClick={() => setCheckInOpen(false)}>Отмена</Button><Button onClick={() => actionMutation.mutate({ action: "check-in", payload: checkInForm })} disabled={actionMutation.isPending}>Подтвердить заселение</Button></>}>
         <div className="space-y-3">
-          <Input label="Документ гостя (необязательно — возьмём из профиля)" value={checkInForm.document_number} onChange={(event) => setCheckInForm({ ...checkInForm, document_number: event.target.value })} placeholder="Оставьте пустым, чтобы использовать данные гостя" />
+          <Input label="Документ гостя (необязательно — возьмём из профиля)" numeric value={checkInForm.document_number} onChange={(event) => setCheckInForm({ ...checkInForm, document_number: event.target.value })} placeholder="Оставьте пустым, чтобы использовать данные гостя" />
           <Input label="Депозит" type="number" value={checkInForm.deposit_amount} onChange={(event) => setCheckInForm({ ...checkInForm, deposit_amount: Number(event.target.value) })} />
           <Select label="Способ оплаты" value={checkInForm.payment_method} onChange={(event) => setCheckInForm({ ...checkInForm, payment_method: event.target.value })}>
             <option value="CARD">Карта</option><option value="CASH">Наличные</option><option value="BANK_TRANSFER">Банковский перевод</option><option value="ONLINE">Онлайн</option>
@@ -1025,6 +1026,9 @@ export function FolioPaymentsPage() {
   const [refundForm, setRefundForm] = useState({ payment_id: "", amount: 0, reason: "" });
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any>(null);
+  const [selectedFolios, setSelectedFolios] = useState<number[]>([]);
+  const [bulkRefundOpen, setBulkRefundOpen] = useState(false);
+  const [bulkRefundForm, setBulkRefundForm] = useState({ amount: 0, reason: "" });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -1055,6 +1059,23 @@ export function FolioPaymentsPage() {
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
 
+  const bulkMutation = useMutation({
+    mutationFn: ({ action, payload }: { action: "close" | "refund"; payload?: any }) =>
+      api.post(action === "close" ? "/manager/folios/bulk-close" : "/manager/payments/bulk-refund", payload),
+    onSuccess: (data: any) => {
+      toast(actionText(data), "success");
+      setSelectedFolios([]);
+      setBulkRefundOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["manager-folios"] });
+      queryClient.invalidateQueries({ queryKey: ["manager-folio"] });
+    },
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
+  function actionText(data: any) {
+    const count = data?.count ?? 0;
+    return `${count} счётов обработано`;
+  }
+
   const importPreviewMutation = useMutation({
     mutationFn: (file: File) => {
       const data = new FormData();
@@ -1084,7 +1105,17 @@ export function FolioPaymentsPage() {
       <PageHeader
         title="Folio и платежи"
         subtitle="Начисления, оплаты, возвраты и импорт банковской выписки."
-        actions={<Button onClick={() => setImportOpen(true)}><Upload size={15} /> Импорт выписки CSV</Button>}
+        actions={
+          <>
+            {selectedFolios.length > 0 && (
+              <>
+                <Button variant="secondary" size="sm" onClick={() => bulkMutation.mutate({ action: "close", payload: { folio_ids: selectedFolios } })} disabled={bulkMutation.isPending}>Закрыть ({selectedFolios.length})</Button>
+                <Button variant="danger" size="sm" onClick={() => setBulkRefundOpen(true)} disabled={bulkMutation.isPending}>Возврат ({selectedFolios.length})</Button>
+              </>
+            )}
+            <Button onClick={() => setImportOpen(true)}><Upload size={15} /> Импорт выписки CSV</Button>
+          </>
+        }
       />
       <Card className="mb-4 flex flex-wrap items-end gap-2">
         <Input label="Поиск" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Гость, номер, folio" className="min-w-[220px]" />
@@ -1098,10 +1129,14 @@ export function FolioPaymentsPage() {
       {!listQuery.isLoading && !listQuery.isError && (
         <div className="table-wrap">
           <table className="table-base">
-            <thead><tr><th>Folio</th><th>Бронь</th><th>Гость</th><th>Номер</th><th>Начислено</th><th>Оплачено</th><th>Баланс</th><th>Статус</th><th /></tr></thead>
+            <thead><tr>
+              <th><input type="checkbox" aria-label="Выбрать все счета" checked={items.length > 0 && items.every((f: any) => selectedFolios.includes(f.folio_id))} onChange={(event) => setSelectedFolios(event.target.checked ? items.map((f: any) => f.folio_id) : [])} /></th>
+              <th>Folio</th><th>Бронь</th><th>Гость</th><th>Номер</th><th>Начислено</th><th>Оплачено</th><th>Баланс</th><th>Статус</th><th />
+            </tr></thead>
             <tbody>
               {items.map((folio: any) => (
                 <tr key={folio.folio_id}>
+                  <td><input type="checkbox" aria-label={`Выбрать счёт ${folio.folio_id}`} checked={selectedFolios.includes(folio.folio_id)} onChange={(event) => setSelectedFolios((current) => event.target.checked ? [...current, folio.folio_id] : current.filter((id) => id !== folio.folio_id))} /></td>
                   <td className="font-semibold">#{folio.folio_id}</td>
                   <td>#{folio.booking_id}</td>
                   <td>{folio.guest_name}</td>
@@ -1194,6 +1229,13 @@ export function FolioPaymentsPage() {
         </div>
       </Modal>
 
+      <Modal open={bulkRefundOpen} title="Массовый возврат" subtitle={`Возврат по последнему платежу ${selectedFolios.length} выбранных счетов.`} onClose={() => setBulkRefundOpen(false)} footer={<><Button variant="secondary" onClick={() => setBulkRefundOpen(false)}>Отмена</Button><Button variant="danger" onClick={() => bulkMutation.mutate({ action: "refund", payload: { folio_ids: selectedFolios, ...bulkRefundForm } })} disabled={bulkMutation.isPending || bulkRefundForm.amount <= 0}>Вернуть {formatMoney(bulkRefundForm.amount)}</Button></>}>
+        <div className="space-y-3">
+          <Input label="Сумма возврата с каждого счёта" type="number" value={bulkRefundForm.amount} onChange={(event) => setBulkRefundForm({ ...bulkRefundForm, amount: Number(event.target.value) })} />
+          <Input label="Причина" value={bulkRefundForm.reason} onChange={(event) => setBulkRefundForm({ ...bulkRefundForm, reason: event.target.value })} placeholder="Массовый возврат" />
+        </div>
+      </Modal>
+
       <Modal open={importOpen} title="Импорт банковской выписки" subtitle="CSV: date, amount, method, booking_id или folio_id, external_ref" onClose={() => setImportOpen(false)} size="lg" footer={<><Button variant="secondary" onClick={() => setImportOpen(false)}>Отмена</Button><Button onClick={() => importCommitMutation.mutate()} disabled={!importPreview?.rows?.some((row: any) => row.status === "ok") || importCommitMutation.isPending}>Загрузить</Button></>}>
         <div className="space-y-4">
           <input type="file" accept=".csv,text/csv" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportFile(file); importPreviewMutation.mutate(file); } }} className="input py-2" />
@@ -1247,11 +1289,18 @@ export function WaitlistPage() {
   const convertRoom = (roomsQuery.data ?? []).find((room: any) => String(room.room_id) === convertForm.room_id);
   useEffect(() => {
     if (!convertRoom) return;
-    const matching = (ratesQuery.data ?? []).filter((rate: any) => rate.room_type_id === convertRoom.room_type_id);
-    if (matching.length && !matching.some((rate: any) => String(rate.rate_id) === convertForm.rate_id)) {
-      setConvertForm((current) => ({ ...current, rate_id: String(matching[0].rate_id) }));
+    const lastNight = convertEntry?.checkout_date ? addDaysISO(convertEntry.checkout_date, -1) : null;
+    const matching = (ratesQuery.data ?? []).filter((rate: any) => {
+      if (rate.room_type_id !== convertRoom.room_type_id) return false;
+      if (!convertEntry?.checkin_date || !lastNight) return true;
+      return (!rate.season_start || rate.season_start <= convertEntry.checkin_date)
+        && (!rate.season_end || rate.season_end >= lastNight);
+    });
+    const pool = matching.length ? matching : (ratesQuery.data ?? []).filter((rate: any) => rate.room_type_id === convertRoom.room_type_id);
+    if (pool.length && !pool.some((rate: any) => String(rate.rate_id) === convertForm.rate_id)) {
+      setConvertForm((current) => ({ ...current, rate_id: String(pool[0].rate_id) }));
     }
-  }, [convertForm.room_id, ratesQuery.data]);
+  }, [convertForm.room_id, convertEntry, ratesQuery.data]);
   const convertMutation = useMutation({
     mutationFn: () => api.post(`/manager/waitlist/${convertEntry.waitlist_id}/convert`, {
       room_id: Number(convertForm.room_id),
@@ -1333,7 +1382,7 @@ export function WaitlistPage() {
             <option value="">Выберите тариф</option>
             {(ratesQuery.data ?? []).filter((rate: any) => !convertRoom || rate.room_type_id === convertRoom.room_type_id).map((rate: any) => <option key={rate.rate_id} value={rate.rate_id}>{rate.name} · {formatMoney(rate.price_per_night)}</option>)}
           </Select>
-          <Input label="Документ гостя" value={convertForm.document_number} onChange={(event) => setConvertForm({ ...convertForm, document_number: event.target.value })} placeholder="4510 123456" />
+          <Input label="Документ гостя" numeric value={convertForm.document_number} onChange={(event) => setConvertForm({ ...convertForm, document_number: event.target.value })} placeholder="4510123456" />
           <p className="text-xs text-muted">Гость: {convertEntry?.guest_name} · {formatDate(convertEntry?.checkin_date)} — {formatDate(convertEntry?.checkout_date)}</p>
         </div>
       </Modal>
@@ -1360,7 +1409,7 @@ export function FloorPlanPage() {
               <div key={room.room_id} className={`rounded-xl border border-line p-4 ${room.booking_id ? "bg-terracotta/6" : "bg-surface"}`}>
                 <div className="flex items-center justify-between">
                   <p className="font-display text-xl font-semibold">№{room.room_number}</p>
-                  <span className={`status-pill ${statusClass(room.status)}`}>{statusLabel(room.status)}</span>
+                  <span className={`status-pill ${statusClass(room.status)}`} style={{ color: statusColor(room.status) }}>{statusLabel(room.status)}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted">{room.room_type} · до {room.capacity} гостей</p>
                 {room.booking_id ? (

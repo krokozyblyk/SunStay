@@ -22,6 +22,9 @@ FILES = [
     "017_room_variants_demo_stay.sql",
     "018_capacity_2fa_stock.sql",
     "019_hotel_reviews.sql",
+    "020_room_amenities_all.sql",
+    "021_service_images.sql",
+    "022_room_photos_distinct.sql",
 ]
 
 parts = [

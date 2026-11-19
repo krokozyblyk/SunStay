@@ -255,7 +255,11 @@ async def availability(
                         'description', r.description,
                         'variant_name', r.variant_name,
                         'floor', r.floor,
-                        'capacity', COALESCE(r.capacity, rt.capacity)
+                        'capacity', COALESCE(r.capacity, rt.capacity),
+                        'amenities', (SELECT COALESCE(json_agg(a.name), '[]'::json)
+                                      FROM room_amenities ra
+                                      JOIN amenities a ON a.amenity_id = ra.amenity_id
+                                      WHERE ra.room_id = r.room_id)
                     ) ORDER BY r.room_number), '[]'::json)
                  FROM rooms r
                  JOIN LATERAL (

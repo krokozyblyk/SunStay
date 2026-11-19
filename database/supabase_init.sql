@@ -3467,3 +3467,95 @@ UPDATE reviews SET review_type = 'BOOKING' WHERE review_type IS NULL;
 CREATE INDEX IF NOT EXISTS idx_reviews_type ON reviews(review_type, status, created_at DESC);
 
 COMMIT;
+
+-- ===== 020_room_amenities_all.sql =====
+-- =====================================================================================
+--  SunStay: удобства во всех номерах (чтобы фильтры поиска работали)
+-- =====================================================================================
+
+BEGIN;
+
+INSERT INTO room_amenities (room_id, amenity_id)
+SELECT r.room_id, a.amenity_id
+FROM rooms r
+CROSS JOIN amenities a
+WHERE (a.name = 'Wi-Fi' OR a.name = 'Кондиционер')
+  AND NOT EXISTS (
+    SELECT 1 FROM room_amenities ra
+    WHERE ra.room_id = r.room_id AND ra.amenity_id = a.amenity_id
+  );
+
+INSERT INTO room_amenities (room_id, amenity_id)
+SELECT r.room_id, a.amenity_id
+FROM rooms r
+CROSS JOIN amenities a
+WHERE r.room_type_id IN (2, 3)
+  AND a.name IN ('Мини-бар', 'Сейф')
+  AND NOT EXISTS (
+    SELECT 1 FROM room_amenities ra
+    WHERE ra.room_id = r.room_id AND ra.amenity_id = a.amenity_id
+  );
+
+INSERT INTO room_amenities (room_id, amenity_id)
+SELECT r.room_id, a.amenity_id
+FROM rooms r
+CROSS JOIN amenities a
+WHERE r.room_type_id = 3
+  AND a.name = 'Балкон'
+  AND NOT EXISTS (
+    SELECT 1 FROM room_amenities ra
+    WHERE ra.room_id = r.room_id AND ra.amenity_id = a.amenity_id
+  );
+
+INSERT INTO room_amenities (room_id, amenity_id)
+SELECT r.room_id, a.amenity_id
+FROM rooms r
+CROSS JOIN amenities a
+WHERE r.room_type_id = 1
+  AND a.name = 'Сейф'
+  AND (r.room_id % 3) = 0
+  AND NOT EXISTS (
+    SELECT 1 FROM room_amenities ra
+    WHERE ra.room_id = r.room_id AND ra.amenity_id = a.amenity_id
+  );
+
+COMMIT;
+
+-- ===== 021_service_images.sql =====
+-- =====================================================================================
+--  SunStay: релевантные фото для услуг
+-- =====================================================================================
+
+BEGIN;
+
+UPDATE services SET image_url = 'images/services/breakfast.jpg' WHERE name LIKE '%Завтрак%';
+UPDATE services SET image_url = 'images/services/parking.jpg' WHERE name LIKE '%Парковка%';
+UPDATE services SET image_url = 'images/services/transfer.jpg' WHERE name LIKE '%Трансфер%';
+UPDATE services SET image_url = 'images/services/spa.jpg' WHERE name LIKE '%СПА%' OR name LIKE '%Спа%';
+
+COMMIT;
+
+-- ===== 022_room_photos_distinct.sql =====
+-- =====================================================================================
+--  SunStay: разные фото для номеров (4 варианта на категорию)
+-- =====================================================================================
+
+BEGIN;
+
+UPDATE rooms SET image_url = CASE room_type_id
+  WHEN 1 THEN 'images/rooms/standard-' || (((room_id - 1) % 4) + 1) || '.jpg'
+  WHEN 2 THEN 'images/rooms/comfort-' || (((room_id - 1) % 4) + 1) || '.jpg'
+  WHEN 3 THEN 'images/rooms/lux-' || (((room_id - 1) % 4) + 1) || '.jpg'
+  ELSE image_url
+END
+WHERE room_type_id IN (1, 2, 3);
+
+UPDATE room_types SET image_url = CASE room_type_id
+  WHEN 1 THEN 'images/rooms/standard-4.jpg'
+  WHEN 2 THEN 'images/rooms/comfort-4.jpg'
+  WHEN 3 THEN 'images/rooms/lux-4.jpg'
+  ELSE image_url
+END
+WHERE room_type_id IN (1, 2, 3);
+
+COMMIT;

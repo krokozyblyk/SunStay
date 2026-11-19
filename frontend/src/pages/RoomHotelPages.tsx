@@ -18,9 +18,9 @@ function ReviewStars({ rating }: { rating: number }) {
 }
 
 const FALLBACK = [
-  { name: "Стандарт", image_url: "images/room-standard.jpg", min_price: 4000 },
-  { name: "Комфорт", image_url: "images/room-comfort.jpg", min_price: 5600 },
-  { name: "Люкс", image_url: "images/room-lux.jpg", min_price: 9200 },
+  { name: "Стандарт", image_url: "images/rooms/standard-4.jpg", min_price: 4000 },
+  { name: "Комфорт", image_url: "images/rooms/comfort-4.jpg", min_price: 5600 },
+  { name: "Люкс", image_url: "images/rooms/lux-4.jpg", min_price: 9200 },
 ];
 
 export function RoomPage() {
@@ -74,6 +74,7 @@ export function RoomPage() {
       room_type: room.room_type,
       room_number: room.room_number,
       guests: String(guests),
+      capacity: String(capacity),
       image: room.image_url || "",
     });
     const target = `/checkout?${next.toString()}`;

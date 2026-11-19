@@ -40,7 +40,7 @@ function ok(name, value) { results.push(`${value ? "PASS" : "FAIL"} ${name}`); }
   const { context, page } = await makePage("Гость");
   await page.goto(`${base}/me/services`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1200);
-  const svcImgs = await page.locator('img[src*="service-"]').evaluateAll((els) => els.map((e) => ({ src: e.getAttribute("src"), w: e.naturalWidth })));
+  const svcImgs = await page.locator('img[src*="services/"]').evaluateAll((els) => els.map((e) => ({ src: e.getAttribute("src"), w: e.naturalWidth })));
   ok(`service images load (${JSON.stringify(svcImgs)})`, svcImgs.length > 0 && svcImgs.every((i) => i.w > 0));
   await context.close();
 }
@@ -58,7 +58,7 @@ function ok(name, value) { results.push(`${value ? "PASS" : "FAIL"} ${name}`); }
     if (await doc.count()) {
       await doc.first().fill("4510 123456");
       const val = await doc.first().inputValue();
-      ok(`document multi-digit (${val})`, val === "4510 123456");
+      ok(`document multi-digit (${val})`, val === "4510123456");
     } else ok("document input present", false);
     const adults = page.getByLabel("Взрослые");
     if (await adults.count()) {

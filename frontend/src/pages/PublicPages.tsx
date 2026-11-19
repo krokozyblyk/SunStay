@@ -44,35 +44,35 @@ const DEMO_ACCOUNTS = [
 const FALLBACK_ROOM_TYPES = [
   {
     room_type_id: 1, name: "Стандарт", capacity: 2, min_price: 4000, price_per_night: 4000,
-    image_url: "images/room-standard.jpg",
+    image_url: "images/rooms/standard-4.jpg",
     description: "Уютные номера с классическим интерьером и продуманным светом.",
     available_rooms: 3,
     rooms: [
-      { room_id: 9, room_number: "111", rate_id: 5, price_per_night: 4000, variant_name: "Классика", description: "Классический интерьер, удобная кровать и рабочий стол.", floor: 1, image_url: "images/variants/standard-classic.jpg" },
-      { room_id: 18, room_number: "120", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Светлый номер с панорамным окном и мягким креслом.", floor: 2, image_url: "images/variants/standard-panorama.jpg" },
-      { room_id: 19, room_number: "121", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Тот же интерьер с видом на внутренний двор.", floor: 2, image_url: "images/variants/standard-panorama.jpg" },
+      { room_id: 9, room_number: "111", rate_id: 5, price_per_night: 4000, variant_name: "Классика", description: "Классический интерьер, удобная кровать и рабочий стол.", floor: 1, image_url: "images/rooms/standard-1.jpg" },
+      { room_id: 18, room_number: "120", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Светлый номер с панорамным окном и мягким креслом.", floor: 2, image_url: "images/rooms/standard-2.jpg" },
+      { room_id: 19, room_number: "121", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Уютный интерьер с видом на внутренний двор.", floor: 2, image_url: "images/rooms/standard-3.jpg" },
     ],
   },
   {
     room_type_id: 2, name: "Комфорт", capacity: 3, min_price: 5600, price_per_night: 5600,
-    image_url: "images/room-comfort.jpg",
+    image_url: "images/rooms/comfort-4.jpg",
     description: "Номера повышенной комфортности с диваном и кофе-станцией.",
     available_rooms: 3,
     rooms: [
-      { room_id: 28, room_number: "210", rate_id: 3, price_per_night: 5600, variant_name: "Городской вид", description: "Номер с видом на город, мягким диваном и кофе-станцией.", floor: 2, image_url: "images/variants/comfort-city.jpg" },
-      { room_id: 38, room_number: "220", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Увеличенная площадь, кресла и просторная ванная.", floor: 3, image_url: "images/variants/comfort-spacious.jpg" },
-      { room_id: 39, room_number: "221", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Тот же интерьер с дополнительной зоной отдыха.", floor: 3, image_url: "images/variants/comfort-spacious.jpg" },
+      { room_id: 28, room_number: "210", rate_id: 3, price_per_night: 5600, variant_name: "Городской вид", description: "Номер с видом на город, мягким диваном и кофе-станцией.", floor: 2, image_url: "images/rooms/comfort-1.jpg" },
+      { room_id: 38, room_number: "220", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Увеличенная площадь, кресла и просторная ванная.", floor: 3, image_url: "images/rooms/comfort-2.jpg" },
+      { room_id: 39, room_number: "221", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Интерьер с дополнительной зоной отдыха.", floor: 3, image_url: "images/rooms/comfort-3.jpg" },
     ],
   },
   {
     room_type_id: 3, name: "Люкс", capacity: 4, min_price: 9200, price_per_night: 9200,
-    image_url: "images/room-lux.jpg",
+    image_url: "images/rooms/lux-4.jpg",
     description: "Просторные люксы с гостиной и панорамными окнами.",
     available_rooms: 3,
     rooms: [
-      { room_id: 6, room_number: "301", rate_id: 4, price_per_night: 9200, variant_name: "Президентский", description: "Гостиная, кабинет и панорамный вид на набережную.", floor: 3, image_url: "images/variants/lux-president.jpg" },
-      { room_id: 48, room_number: "310", rate_id: 4, price_per_night: 9200, variant_name: "Панорамный", description: "Панорамное окно, отдельная гостиная и мягкий свет.", floor: 3, image_url: "images/variants/lux-panorama.jpg" },
-      { room_id: 53, room_number: "315", rate_id: 4, price_per_night: 9200, variant_name: "Классик", description: "Классический люкс с просторной спальней и гостиной.", floor: 4, image_url: "images/variants/lux-classic.jpg" },
+      { room_id: 6, room_number: "301", rate_id: 4, price_per_night: 9200, variant_name: "Президентский", description: "Гостиная, кабинет и панорамный вид на набережную.", floor: 3, image_url: "images/rooms/lux-1.jpg" },
+      { room_id: 48, room_number: "310", rate_id: 4, price_per_night: 9200, variant_name: "Панорамный", description: "Панорамное окно, отдельная гостиная и мягкий свет.", floor: 3, image_url: "images/rooms/lux-2.jpg" },
+      { room_id: 53, room_number: "315", rate_id: 4, price_per_night: 9200, variant_name: "Классик", description: "Классический люкс с просторной спальней и гостиной.", floor: 4, image_url: "images/rooms/lux-3.jpg" },
     ],
   },
 ];
@@ -297,7 +297,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="relative">
-            <RoomArt index={0} imageUrl={roomTypes[0]?.image_url || roomImageByName(roomTypes[0]?.name)} className="h-[360px] shadow-float md:h-[440px]" />
+            <RoomArt index={0} imageUrl="images/rooms/lux-1.jpg" className="h-[360px] shadow-float md:h-[440px]" />
             <Card className="mt-4">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <label className="col-span-1 flex flex-col gap-1.5">
@@ -515,6 +515,7 @@ export function SearchPage() {
       room_type: roomType.name,
       room_number: room.room_number,
       guests: String(guests),
+      capacity: String(room.capacity || roomType.capacity || 2),
       image: room.image_url || roomType.image_url || "",
       variant: room.variant_name || "",
       description: room.description || "",
@@ -657,7 +658,8 @@ export function CheckoutPage() {
   const rateId = Number(params.get("rate_id") || 0);
   const [checkin, setCheckin] = useState(params.get("checkin") || addDaysISO(todayISO(), 7));
   const [checkout, setCheckout] = useState(params.get("checkout") || addDaysISO(todayISO(), 10));
-  const [adults, setAdults] = useState(Number(params.get("guests") || 2));
+  const capacity = Math.max(1, Number(params.get("capacity") || 4));
+  const [adults, setAdults] = useState(Math.max(1, Math.min(Number(params.get("guests") || 2), capacity)));
   const [children, setChildren] = useState(0);
   const price = Number(params.get("price") || 0);
   const roomType = params.get("room_type") || "Номер";
@@ -675,6 +677,14 @@ export function CheckoutPage() {
     hold_minutes: 60,
     special_requests: "",
   });
+  const checkoutValid = Boolean(
+    form.full_name.trim().length >= 3 &&
+    form.document_number.replace(/\D/g, "").length >= 6 &&
+    /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email) &&
+    form.pdn_consent &&
+    nights > 0 &&
+    adults + children <= capacity
+  );
   const [promo, setPromo] = useState("");
   const [discount, setDiscount] = useState(0);
   const [promoError, setPromoError] = useState("");
@@ -743,16 +753,20 @@ export function CheckoutPage() {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <Input label="ФИО" value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} placeholder="Иванов Иван Иванович" />
-            <Input label="Документ" value={form.document_number} onChange={(event) => setForm({ ...form, document_number: event.target.value })} placeholder="4510 123456" />
+            <Input label="Документ" numeric value={form.document_number} onChange={(event) => setForm({ ...form, document_number: event.target.value })} placeholder="4510123456" />
             <Input label="Телефон" value={form.phone ?? ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+7 900 111-22-33" />
             <Input label="Email" value={form.email ?? ""} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="guest@example.com" />
             <Input label="Заезд" type="date" value={checkin} onChange={(event) => setCheckin(event.target.value)} />
             <Input label="Выезд" type="date" value={checkout} onChange={(event) => setCheckout(event.target.value)} />
-            <Select label="Взрослые" value={adults} onChange={(event) => setAdults(Number(event.target.value))}>
-              {[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}</option>)}
+            <Select label="Взрослые" value={adults} onChange={(event) => {
+              const value = Number(event.target.value);
+              setAdults(value);
+              setChildren((current) => Math.min(current, Math.max(0, capacity - value)));
+            }}>
+              {Array.from({ length: capacity }, (_, i) => i + 1).map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
             <Select label="Дети" value={children} onChange={(event) => setChildren(Number(event.target.value))}>
-              {[0, 1, 2, 3, 4].map((value) => <option key={value} value={value}>{value}</option>)}
+              {Array.from({ length: capacity - adults + 1 }, (_, i) => i).map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
             <Input label="Время заезда" type="time" value={form.arrival_time} onChange={(event) => setForm({ ...form, arrival_time: event.target.value })} />
             <Input label="Держать бронь, мин" type="number" min={5} max={1440} value={form.hold_minutes} onChange={(event) => setForm({ ...form, hold_minutes: Number(event.target.value) })} />
@@ -778,9 +792,14 @@ export function CheckoutPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => navigate(-1)}>Назад</Button>
-            <Button onClick={() => bookingMutation.mutate()} disabled={bookingMutation.isPending || !form.full_name || !form.document_number}>
+            <Button onClick={() => bookingMutation.mutate()} disabled={bookingMutation.isPending || !checkoutValid}>
               <Lock size={15} /> {bookingMutation.isPending ? "Оформляем…" : "Оплатить и забронировать"}
             </Button>
+            {!checkoutValid && (
+              <p className="text-xs text-danger">
+                Заполните ФИО, документ (от 6 цифр), корректный email и согласие на обработку данных.
+              </p>
+            )}
           </div>
           {bookingMutation.isError && <ErrorState message={getErrorMessage(bookingMutation.error)} />}
         </Card>
