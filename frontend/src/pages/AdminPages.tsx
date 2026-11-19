@@ -1183,6 +1183,7 @@ export function AdminReviewsPage() {
       toast("Статус отзыва обновлён", "success");
       queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["public-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["public-rating"] });
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });

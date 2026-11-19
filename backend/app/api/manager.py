@@ -52,6 +52,15 @@ async def _setting_number(conn: AsyncConnection, key: str, default: float) -> fl
 
 async def _award_loyalty_points(conn: AsyncConnection, booking: dict) -> int:
     cur = await conn.execute(
+        """
+        SELECT 1 FROM loyalty_transactions
+        WHERE booking_id = %s AND transaction_type = 'EARN'
+        """,
+        (booking["booking_id"],),
+    )
+    if await cur.fetchone():
+        return 0
+    cur = await conn.execute(
         "SELECT user_id FROM guests WHERE guest_id = %s", (booking["guest_id"],)
     )
     guest = await cur.fetchone()
@@ -85,6 +94,14 @@ async def _award_loyalty_points(conn: AsyncConnection, booking: dict) -> int:
         VALUES (%s, %s, 'EARN', %s, %s)
         """,
         (guest["user_id"], points, f"Начисление за проживание #{booking['booking_id']}", booking["booking_id"]),
+    )
+    await notify_user(
+        conn,
+        guest["user_id"],
+        "LOYALTY",
+        "Баллы начислены",
+        f"Вам пришли баллы за посещение нашего отеля: +{points}. Спасибо, что выбрали SunStay!",
+        "/me/loyalty",
     )
     return points
 
@@ -446,7 +463,7 @@ async def check_in(
     user: dict = Depends(require_permission("bookings:checkin")),
     conn: AsyncConnection = Depends(get_db),
 ):
-    if payload.document_number and payload.document_number.strip():
+    if payload.document_number and payload.document_number.strip() and "*" not in payload.document_number:
         document = document_fields(payload.document_number)
     else:
         cur = await conn.execute(
@@ -514,6 +531,8 @@ async def check_out(
         ),
     )
     booking = await get_booking(conn, booking_id)
+    # sp_check_out closes the folio — award points at that moment too (dedup
+    # guard in _award_loyalty_points prevents a second award later).
     await _award_loyalty_points(conn, booking)
     await notify_guest_by_booking(
         conn,
@@ -868,15 +887,21 @@ async def close_folio(
     user: dict = Depends(require_permission("folios:manage")),
     conn: AsyncConnection = Depends(get_db),
 ):
-    await conn.execute(
+    cur = await conn.execute(
         """
         UPDATE folios
         SET status = 'CLOSED', closed_at = now()
         WHERE folio_id = %s AND status = 'OPEN'
+        RETURNING booking_id
         """,
         (folio_id,),
     )
-    return {"ok": True, "status": "CLOSED"}
+    row = await cur.fetchone()
+    points = 0
+    if row:
+        booking = await get_booking(conn, row["booking_id"])
+        points = await _award_loyalty_points(conn, booking)
+    return {"ok": True, "status": "CLOSED", "points": points}
 
 
 @router.post("/folios/bulk-close")
@@ -893,12 +918,17 @@ async def bulk_close_folios(
         """
         UPDATE folios SET status = 'CLOSED', closed_at = now()
         WHERE status = 'OPEN' AND folio_id = ANY(%s)
-        RETURNING folio_id
+        RETURNING folio_id, booking_id
         """,
         (ids,),
     )
-    closed = [row["folio_id"] for row in await cur.fetchall()]
-    return {"closed": closed, "count": len(closed)}
+    rows = await cur.fetchall()
+    points = 0
+    for row in rows:
+        booking = await get_booking(conn, row["booking_id"])
+        points += await _award_loyalty_points(conn, booking)
+    closed = [row["folio_id"] for row in rows]
+    return {"closed": closed, "count": len(closed), "points": points}
 
 
 @router.post("/payments/bulk-refund")

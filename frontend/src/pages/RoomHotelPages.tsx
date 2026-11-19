@@ -18,9 +18,9 @@ function ReviewStars({ rating }: { rating: number }) {
 }
 
 const FALLBACK = [
-  { name: "Стандарт", image_url: "images/rooms/standard-4.jpg", min_price: 4000 },
-  { name: "Комфорт", image_url: "images/rooms/comfort-4.jpg", min_price: 5600 },
-  { name: "Люкс", image_url: "images/rooms/lux-4.jpg", min_price: 9200 },
+  { name: "Стандарт", image_url: "images/unique/room-001.jpg", min_price: 4000 },
+  { name: "Комфорт", image_url: "images/unique/room-025.jpg", min_price: 5600 },
+  { name: "Люкс", image_url: "images/unique/room-047.jpg", min_price: 9200 },
 ];
 
 export function RoomPage() {
@@ -138,6 +138,10 @@ export function RoomPage() {
 
 export function HotelPage() {
   const features = useFeatures();
+  const ratingQuery = useQuery({
+    queryKey: ["public-rating"],
+    queryFn: () => api.get("/public/rating").then((response) => response.data),
+  });
   const reviewsQuery = useQuery({
     queryKey: ["public-reviews"],
     queryFn: () => api.get("/public/reviews", { params: { limit: 12 } }).then((response) => response.data),
@@ -149,6 +153,32 @@ export function HotelPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 md:px-6">
       <PageHeader title="SunStay" subtitle="Бутик-отель в центре Санкт-Петербурга · набережная Мойки, 12" />
+      {ratingQuery.data && Number(ratingQuery.data.total) > 0 && (
+        <Card className="flex flex-wrap items-center gap-6">
+          <div className="text-center">
+            <p className="font-display text-5xl font-semibold text-ink">{Number(ratingQuery.data.average).toFixed(1)}</p>
+            <div className="mt-1 flex justify-center gap-0.5 text-amber">
+              {[1, 2, 3, 4, 5].map((value) => <Star key={value} size={18} className={value <= Math.round(Number(ratingQuery.data.average)) ? "fill-current" : "opacity-25"} />)}
+            </div>
+            <p className="mt-1 text-xs text-muted">{ratingQuery.data.total} отзывов</p>
+          </div>
+          <div className="min-w-[220px] flex-1 space-y-1">
+            {[5, 4, 3, 2, 1].map((value) => {
+              const count = Number(ratingQuery.data[`stars_${value}`] || 0);
+              const total = Number(ratingQuery.data.total || 1);
+              return (
+                <div key={value} className="flex items-center gap-2 text-xs text-muted">
+                  <span className="w-3">{value}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface2">
+                    <div className="h-full rounded-full bg-amber" style={{ width: `${Math.round((count / total) * 100)}%` }} />
+                  </div>
+                  <span className="w-6 text-right">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
       <div className="grid gap-2 md:grid-cols-4">
         {(roomTypesQuery.data ?? FALLBACK).map((room: any, index: number) => (
           <img key={index} src={resolveImage(room.image_url || roomImageByName(room.name))} alt={room.name} className="h-52 w-full rounded-2xl object-cover" />
@@ -201,6 +231,7 @@ export function HotelReviewForm() {
       toast("Спасибо! Отзыв опубликован.", "success");
       setTitle(""); setBody(""); setRating(5);
       queryClient.invalidateQueries({ queryKey: ["public-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["public-rating"] });
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });

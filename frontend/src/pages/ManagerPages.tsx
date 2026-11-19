@@ -341,15 +341,15 @@ export function ManagerDashboardPage() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={roomStatus} dataKey="rooms" nameKey="status" innerRadius={55} outerRadius={85} paddingAngle={3}>
-                  {roomStatus.map((entry: any, index: number) => <Cell key={entry.status} fill={pieColors[index % pieColors.length]} />)}
+                  {roomStatus.map((entry: any) => <Cell key={entry.status} fill={statusColor(entry.status)} />)}
                 </Pie>
-                <Tooltip formatter={(value) => [`${value} номеров`, "Количество"]} />
+                <Tooltip formatter={(value, name) => [`${value} номеров`, statusLabel(String(name))]} contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--ink)" }} itemStyle={{ color: "var(--ink)" }} labelStyle={{ color: "var(--ink)" }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs text-muted">
             {roomStatus.map((item: any, index: number) => (
-              <span key={item.status} className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: pieColors[index % pieColors.length] }} /> {statusLabel(item.status)} · {item.rooms}</span>
+              <span key={item.status} className="flex items-center gap-2" style={{ color: statusColor(item.status) }}><span className="h-2.5 w-2.5 rounded-full" style={{ background: statusColor(item.status) }} /> {statusLabel(item.status)} · {item.rooms}</span>
             ))}
           </div>
         </Card>
@@ -824,7 +824,7 @@ export function BookingDetailPage() {
 
   useEffect(() => {
     if (query.data?.booking) {
-      setCheckInForm((current) => ({ ...current, document_number: query.data.booking.document_number ?? "" }));
+      setCheckInForm((current) => ({ ...current, document_number: "" }));
       setMoveForm({ room_id: String(query.data.booking.room_id), checkin_date: query.data.booking.checkin_date, checkout_date: query.data.booking.checkout_date });
       setHoldForm({
         arrival_time: String(query.data.booking.arrival_time ?? "14:00").slice(0, 5),

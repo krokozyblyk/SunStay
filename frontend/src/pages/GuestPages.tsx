@@ -26,6 +26,7 @@ import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 import { useFeatures } from "../lib/features";
 import { TwoFactorSetup } from "../components/TwoFactor";
+import { HotelReviewForm } from "./RoomHotelPages";
 import { useToast } from "../components/ui";
 import { Button, Card, Drawer, EmptyState, ErrorState, Input, KpiCard, Modal, PageHeader, Select, Spinner, StatusPill, Tabs, Textarea } from "../components/ui";
 import { formatDate, formatDateTime, formatMoney, LINE_TYPE_LABELS, PAYMENT_METHOD_LABELS, resolveImage, roomImageByName, serviceImageByName, statusLabel } from "../lib/utils";
@@ -314,6 +315,8 @@ export function GuestBookingDetailPage() {
       setReviewBody("");
       queryClient.invalidateQueries({ queryKey: ["guest-booking", id] });
       queryClient.invalidateQueries({ queryKey: ["guest-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["public-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["public-rating"] });
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
@@ -438,6 +441,11 @@ export function GuestBookingDetailPage() {
               </p>
             )}
             {["NEW", "CONFIRMED"].includes(booking.status) && <Button variant="ghost" className="w-full" onClick={() => setCancelOpen(true)}>Отменить</Button>}
+          </Card>
+          <Card className="space-y-3">
+            <h2 className="font-display text-2xl font-semibold">Отзыв об отеле</h2>
+            <p className="text-sm text-muted">Оставить отзыв можно в любой момент — он сразу появится на странице отеля.</p>
+            <HotelReviewForm />
           </Card>
         </div>
       </div>

@@ -237,6 +237,11 @@ async def availability(
                 rt.capacity,
                 rt.description,
                 rt.image_url,
+                (SELECT COALESCE(json_agg(DISTINCT a.name), '[]'::json)
+                 FROM rooms r
+                 JOIN room_amenities ra ON ra.room_id = r.room_id
+                 JOIN amenities a ON a.amenity_id = ra.amenity_id
+                 WHERE r.room_type_id = rt.room_type_id) AS amenities,
                 (SELECT MIN(rp.price_per_night)
                  FROM rate_plans rp
                  WHERE rp.room_type_id = rt.room_type_id
@@ -723,5 +728,22 @@ async def create_hotel_review(
         RETURNING review_id, status, created_at
         """,
         (guest_id, rating, title, body),
+    )
+    return dict(await cur.fetchone())
+
+@router.get("/rating")
+async def public_rating(conn: AsyncConnection = Depends(get_db)):
+    cur = await conn.execute(
+        """
+        SELECT
+            COUNT(*) AS total,
+            COALESCE(ROUND(AVG(rating)::numeric, 1), 0) AS average,
+            COUNT(*) FILTER (WHERE rating = 5) AS stars_5,
+            COUNT(*) FILTER (WHERE rating = 4) AS stars_4,
+            COUNT(*) FILTER (WHERE rating = 3) AS stars_3,
+            COUNT(*) FILTER (WHERE rating = 2) AS stars_2,
+            COUNT(*) FILTER (WHERE rating = 1) AS stars_1
+        FROM reviews WHERE status = 'APPROVED'
+        """
     )
     return dict(await cur.fetchone())
