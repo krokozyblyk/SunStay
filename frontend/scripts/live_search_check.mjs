@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+const browser = await chromium.launch({ channel: "msedge", headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const errors = [];
+page.on("pageerror", (e) => errors.push(String(e)));
+page.on("response", (r) => { if (r.status() >= 400 && r.url().includes("api")) errors.push(`${r.status()} ${r.url()}`); });
+await page.goto("https://krokozyblyk.github.io/SunStay/search?checkin=2026-12-20&checkout=2026-12-22&guests=2", { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(3000);
+const text = await page.locator("body").innerText();
+console.log("TEXT", text.slice(0, 800));
+console.log("IMGS", await page.locator("img").evaluateAll((els) => els.map((e) => ({ src: e.getAttribute("src"), w: e.naturalWidth }))));
+console.log("ERRORS", JSON.stringify(errors, null, 2));
+await browser.close();
