@@ -8,14 +8,11 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    outputs:
-      api_resp: ${{ steps.diag.outputs.api_resp }}
-      analytics_resp: ${{ steps.diag.outputs.analytics_resp }}
     steps:
       - name: Diagnose API
-        id: diag
         run: |
-          RESP=$(curl -sS -i --max-time 90 -H "Origin: https://krokozyblyk.github.io" https://sunstay-api.onrender.com/api/health 2>&1 || true)
-          echo "api_resp=$(printf '%s' "$RESP" | base64 -w0)" >> "$GITHUB_OUTPUT"
-          RESP2=$(curl -sS -i --max-time 90 -H "Origin: https://krokozyblyk.github.io" https://sunstay-analytics.onrender.com/api/openapi.json 2>&1 || true)
-          echo "analytics_resp=$(printf '%s' "$RESP2" | base64 -w0)" >> "$GITHUB_OUTPUT"
+          echo "=== API ==="
+          curl -sS -i --max-time 90 -H "Origin: https://krokozyblyk.github.io" https://sunstay-api.onrender.com/api/health || true
+          echo "=== ANALYTICS ==="
+          curl -sS -i --max-time 90 -H "Origin: https://krokozyblyk.github.io" https://sunstay-analytics.onrender.com/api/openapi.json || true
+          exit 1
