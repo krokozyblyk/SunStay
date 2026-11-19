@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: sunstay-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_ADMIN_URL
+        sync: false
+      - key: ANALYTICS_DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://krokozyblyk.github.io
+      - key: BACKUP_DIR
+        value: /backups
+      - key: TZ
+        value: Europe/Moscow
+
+  - type: web
+    name: sunstay-analytics
+    runtime: docker
+    plan: free
+    rootDir: analytics
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: TZ
+        value: Europe/Moscow

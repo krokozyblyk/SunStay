@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
         min_size=1,
         max_size=5,
         open=False,
-        kwargs={"row_factory": dict_row, "autocommit": True},
+        kwargs={"row_factory": dict_row, "autocommit": True, "options": "-c search_path=public,extensions"},
     )
     await pool.open()
     await pool.wait()

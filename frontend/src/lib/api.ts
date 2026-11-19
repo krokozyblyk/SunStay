@@ -4,13 +4,16 @@ export const ACCESS_KEY = "sunstay_access_token";
 export const REFRESH_KEY = "sunstay_refresh_token";
 export const USER_KEY = "sunstay_user";
 
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
+const ANALYTICS_BASE = import.meta.env.VITE_ANALYTICS_URL || "/analytics/api";
+
 export const api = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE,
   timeout: 30000,
 });
 
 export const analyticsApi = axios.create({
-  baseURL: "/analytics/api",
+  baseURL: ANALYTICS_BASE,
   timeout: 30000,
 });
 

@@ -22,7 +22,7 @@ def get_pool() -> AsyncConnectionPool:
             min_size=1,
             max_size=10,
             open=False,
-            kwargs={"row_factory": dict_row},
+            kwargs={"row_factory": dict_row, "options": "-c search_path=public,extensions"},
         )
     return _pool
 

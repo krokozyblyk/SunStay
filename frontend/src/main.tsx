@@ -28,7 +28,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <CurrencyProvider>
             <AuthProvider>
               <ToastProvider>
-                <BrowserRouter>
+                <BrowserRouter basename={import.meta.env.BASE_URL}>
                   <App />
                 </BrowserRouter>
               </ToastProvider>
