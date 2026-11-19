@@ -1,6 +1,6 @@
-import json, urllib.request, urllib.error
+import json, urllib.request, urllib.error, sys
 
-BASE = "http://localhost:8000/api"
+BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000") + "/api"
 
 def req(method, path, data=None, headers=None):
     body = json.dumps(data).encode() if data is not None else None

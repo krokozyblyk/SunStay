@@ -438,7 +438,27 @@ async def create_public_booking(
 
     guest_id = await find_or_create_guest(conn, payload)
     if user and user.get("role_code") == "GUEST":
-        await conn.execute("UPDATE guests SET user_id = %s WHERE guest_id = %s", (user["user_id"], guest_id))
+        # An account can be linked to only one guest (guests_user_id_key).
+        # If the user books with new contact details, find_or_create_guest creates
+        # a fresh guest — reuse the account's existing guest instead of trying to
+        # attach user_id to the new one (that caused a 500 UniqueViolation).
+        cur = await conn.execute(
+            "SELECT guest_id FROM guests WHERE user_id = %s ORDER BY guest_id LIMIT 1",
+            (user["user_id"],),
+        )
+        linked = await cur.fetchone()
+        if linked:
+            await conn.execute(
+                """
+                UPDATE guests
+                SET full_name = %s, email = COALESCE(%s, email)
+                WHERE guest_id = %s
+                """,
+                (payload.full_name, payload.email, linked["guest_id"]),
+            )
+            guest_id = linked["guest_id"]
+        else:
+            await conn.execute("UPDATE guests SET user_id = %s WHERE guest_id = %s", (user["user_id"], guest_id))
 
     cur = await conn.execute(
         """
