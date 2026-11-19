@@ -43,7 +43,7 @@ const DEMO_ACCOUNTS = [
 
 const FALLBACK_ROOM_TYPES = [
   {
-    room_type_id: 1, name: "Стандарт", capacity: 2, min_price: 4000,
+    room_type_id: 1, name: "Стандарт", capacity: 2, min_price: 4000, price_per_night: 4000,
     image_url: "images/room-standard.jpg",
     description: "Уютные номера с классическим интерьером и продуманным светом.",
     available_rooms: 3,
@@ -54,7 +54,7 @@ const FALLBACK_ROOM_TYPES = [
     ],
   },
   {
-    room_type_id: 2, name: "Комфорт", capacity: 3, min_price: 5600,
+    room_type_id: 2, name: "Комфорт", capacity: 3, min_price: 5600, price_per_night: 5600,
     image_url: "images/room-comfort.jpg",
     description: "Номера повышенной комфортности с диваном и кофе-станцией.",
     available_rooms: 3,
@@ -65,7 +65,7 @@ const FALLBACK_ROOM_TYPES = [
     ],
   },
   {
-    room_type_id: 3, name: "Люкс", capacity: 4, min_price: 9200,
+    room_type_id: 3, name: "Люкс", capacity: 4, min_price: 9200, price_per_night: 9200,
     image_url: "images/room-lux.jpg",
     description: "Просторные люксы с гостиной и панорамными окнами.",
     available_rooms: 3,
@@ -82,7 +82,7 @@ function RoomArt({ index = 0, className = "", imageUrl }: { index?: number; clas
   if (resolved) {
     return (
       <div className={`relative overflow-hidden rounded-2xl bg-surface2 ${className}`}>
-        <img src={resolved} alt="Номер SunStay" loading="lazy" className="h-full w-full object-cover" />
+        <img src={resolved} alt="Номер SunStay" loading="eager" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
       </div>
     );
