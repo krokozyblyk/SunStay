@@ -15,3 +15,7 @@ jobs:
         run: curl -sS --max-time 90 -w "\nHTTP %{http_code}\n" https://sunstay-api.onrender.com/api/auth/2fa/status || true
       - name: Check public config
         run: curl -sS --max-time 90 -w "\nHTTP %{http_code}\n" https://sunstay-api.onrender.com/api/public/config || true
+      - name: List public and auth routes
+        run: |
+          curl -sS --max-time 90 https://sunstay-api.onrender.com/api/openapi.json -o /tmp/openapi.json || true
+          python3 -c "import json;d=json.load(open('/tmp/openapi.json'));print('\n'.join(sorted(p for p in d.get('paths',{}) if 'public' in p or '2fa' in p or 'config' in p)))" || true
