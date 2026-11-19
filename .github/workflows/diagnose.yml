@@ -19,6 +19,8 @@ jobs:
         run: |
           curl -sS --max-time 90 https://sunstay-api.onrender.com/api/openapi.json -o /tmp/openapi.json || true
           python3 -c "import json;d=json.load(open('/tmp/openapi.json'));print('\n'.join(sorted(p for p in d.get('paths',{}) if 'public' in p or '2fa' in p or 'config' in p or 'bulk' in p)))" || true
-      - name: Check amenities in availability
+      - name: Check rating and amenities
         run: |
-          curl -sS --max-time 90 'https://sunstay-api.onrender.com/api/public/availability?checkin=2026-12-20&checkout=2026-12-22&guests=2' | python3 -c "import sys,json;d=json.load(sys.stdin);r=d[0]['rooms'][0];print('AMENITIES',r.get('amenities'));print('IMAGE',r.get('image_url'))" || true
+          curl -sS --max-time 90 'https://sunstay-api.onrender.com/api/public/rating' || true
+          echo ""
+          curl -sS --max-time 90 'https://sunstay-api.onrender.com/api/public/availability?checkin=2026-12-20&checkout=2026-12-22&guests=2' | python3 -c "import sys,json;d=json.load(sys.stdin);imgs=[r.get('image_url') for t in d for r in t.get('rooms',[])];print('TYPE_AMENITIES',d[0].get('amenities'));print('UNIQUE_IMAGES',len(set(imgs)),'of',len(imgs));print('SAMPLE',imgs[:3])" || true

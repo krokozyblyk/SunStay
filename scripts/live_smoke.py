@@ -129,4 +129,15 @@ if status in (200, 201) and wl.get("waitlist_id"):
             }, headers=manager)
             check("waitlist convert to booking", status == 200 and conv.get("booking_id"), f"{status} {str(conv)[:200]}")
 
+    # Check-in with masked document (the UI prefill case)
+    status, bookings = req("GET", "/manager/bookings?status=CONFIRMED&page_size=3", headers=manager)
+    items = bookings.get("items", []) if isinstance(bookings, dict) else []
+    if items:
+        bid = items[0]["booking_id"]
+        status, cin = req("POST", f"/manager/bookings/{bid}/check-in", {
+            "document_number": items[0].get("document_number") or "**** 3456",
+            "deposit_amount": 0, "payment_method": "CARD",
+        }, headers=manager)
+        check("check-in with masked doc", status == 200, f"{status} {str(cin)[:200]}")
+
 print("LIVE SMOKE DONE", flush=True)
