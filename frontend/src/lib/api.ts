@@ -9,12 +9,12 @@ const ANALYTICS_BASE = import.meta.env.VITE_ANALYTICS_URL || "/analytics/api";
 
 export const api = axios.create({
   baseURL: API_BASE,
-  timeout: 30000,
+  timeout: 120000,
 });
 
 export const analyticsApi = axios.create({
   baseURL: ANALYTICS_BASE,
-  timeout: 30000,
+  timeout: 120000,
 });
 
 for (const client of [api, analyticsApi]) {
@@ -26,6 +26,10 @@ for (const client of [api, analyticsApi]) {
     return config;
   });
 }
+
+// Разогрев Render free: первый запрос может занять до минуты.
+api.get("/health").catch(() => {});
+analyticsApi.get("/openapi.json").catch(() => {});
 
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {

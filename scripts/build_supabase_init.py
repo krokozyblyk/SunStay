@@ -18,6 +18,7 @@ FILES = [
     "013_loyalty_security.sql",
     "014_guest_cancellation.sql",
     "015_images_features.sql",
+    "016_demo_rooms.sql",
 ]
 
 parts = [
