@@ -33,5 +33,7 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: CORS_ORIGINS
+        value: https://krokozyblyk.github.io
       - key: TZ
         value: Europe/Moscow
