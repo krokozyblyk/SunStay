@@ -21,7 +21,7 @@ import {
   Users,
   Wifi,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, getErrorMessage } from "../lib/api";
@@ -619,6 +619,7 @@ export function CheckoutPage() {
     },
   });
 
+  const idempotencyKey = useRef(crypto.randomUUID());
   const bookingMutation = useMutation({
     mutationFn: () => api.post("/public/bookings", {
       ...form,
@@ -631,7 +632,7 @@ export function CheckoutPage() {
       children: 0,
       source: "SITE",
       points_to_use: appliedPoints,
-    }).then((response) => response.data),
+    }, { headers: { "Idempotency-Key": idempotencyKey.current } }).then((response) => response.data),
     onSuccess: (booking) => {
       navigate("/confirmation", { state: { booking } });
     },

@@ -302,7 +302,7 @@ export function MaintenancePage() {
                   <td className="font-semibold">№{request.room_number}<p className="text-xs text-muted">{request.floor} этаж</p></td>
                   <td className="max-w-[320px]">{request.description}</td>
                   <td><Badge tone={request.priority === "URGENT" || request.priority === "HIGH" ? "danger" : "neutral"}>{PRIORITY_LABELS[request.priority] ?? request.priority}</Badge></td>
-                  <td><StatusPill status={request.status} /></td>
+                  <td><div className="flex flex-wrap items-center gap-1"><StatusPill status={request.status} />{["OPEN", "IN_PROGRESS"].includes(request.status) && Date.now() - new Date(request.created_at).getTime() > 24 * 60 * 60 * 1000 && <Badge tone="danger">Просрочено</Badge>}</div></td>
                   <td>{request.assignee_name ?? "—"}</td>
                   <td>{formatDateTime(request.created_at)}</td>
                   <td className="text-right">

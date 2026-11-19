@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from psycopg import AsyncConnection
+from psycopg.types.json import Jsonb
 
 from ..audit import write_audit_event
 from ..crypto import document_fields, phone_fields
@@ -416,6 +417,16 @@ async def create_public_booking(
     if not payload.pdn_consent:
         raise HTTPException(status_code=400, detail="Нужно согласие на обработку персональных данных")
 
+    idempotency_key = request.headers.get("idempotency-key")
+    if idempotency_key:
+        cur = await conn.execute(
+            "SELECT response FROM idempotency_keys WHERE key = %s AND endpoint = 'public.bookings'",
+            (idempotency_key,),
+        )
+        existing = await cur.fetchone()
+        if existing and existing["response"]:
+            return existing["response"]
+
     guest_id = await find_or_create_guest(conn, payload)
 
     cur = await conn.execute(
@@ -578,4 +589,13 @@ async def create_public_booking(
         f"Бронь #{booking_id}: {booking.get('guest_name', '')}, заезд {booking['checkin_date']}.",
         "/app/bookings",
     )
+    if idempotency_key:
+        await conn.execute(
+            """
+            INSERT INTO idempotency_keys (key, user_id, endpoint, response)
+            VALUES (%s, %s, 'public.bookings', %s)
+            ON CONFLICT (key) DO NOTHING
+            """,
+            (idempotency_key, user["user_id"] if user else None, Jsonb(booking)),
+        )
     return booking
