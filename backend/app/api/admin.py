@@ -7,6 +7,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
@@ -883,6 +884,11 @@ async def revoke_session(
     return {"ok": True}
 
 
+def _with_db(url: str, name: str) -> str:
+    parts = urlsplit(url)
+    return urlunsplit(parts._replace(path="/" + name))
+
+
 @router.post("/backups/verify")
 async def verify_backup(user: dict = Depends(require_permission("backup:manage"))):
     path = backup_path()
@@ -920,20 +926,21 @@ async def test_restore(user: dict = Depends(require_permission("backup:manage"))
         created = subprocess.run(["psql", admin_url, "-c", f"CREATE DATABASE {temp_db};"], capture_output=True, text=True, timeout=60)
         if created.returncode != 0:
             return {"ok": False, "error": (created.stderr or "")[:500]}
+        temp_url = _with_db(admin_url, temp_db)
         restored = subprocess.run(
-            ["pg_restore", "--no-owner", "--dbname", admin_url.rsplit("/", 1)[0] + "/" + temp_db, str(path)],
+            ["pg_restore", "--no-owner", "--dbname", temp_url, str(path)],
             capture_output=True,
             text=True,
             timeout=180,
         )
         tables = subprocess.run(
-            ["psql", admin_url.rsplit("/", 1)[0] + "/" + temp_db, "-t", "-A", "-c", "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';"],
+            ["psql", temp_url, "-t", "-A", "-c", "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';"],
             capture_output=True,
             text=True,
             timeout=60,
         )
         bookings = subprocess.run(
-            ["psql", admin_url.rsplit("/", 1)[0] + "/" + temp_db, "-t", "-A", "-c", "SELECT count(*) FROM bookings;"],
+            ["psql", temp_url, "-t", "-A", "-c", "SELECT count(*) FROM bookings;"],
             capture_output=True,
             text=True,
             timeout=60,
