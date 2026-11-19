@@ -73,6 +73,7 @@ import {
   formatNumber,
   LINE_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
+  roomImageByName,
   statusClass,
   statusLabel,
   todayISO,
@@ -886,7 +887,7 @@ export function BookingDetailPage() {
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl bg-surface2 p-4"><p className="label">Гость</p><p className="mt-2 font-semibold">{booking.guest_name}</p><p className="text-sm text-muted"><SensitiveValue value={booking.document_number} /></p><p className="text-sm text-muted"><SensitiveValue value={booking.guest_phone} /></p><p className="text-sm text-muted">{booking.guest_email}</p></div>
-              <div className="rounded-xl bg-surface2 p-4">{booking.room_image && <img src={booking.room_image} alt={booking.room_type} loading="lazy" className="mb-3 h-28 w-full rounded-lg object-cover" />}<p className="label">Проживание</p><p className="mt-2 text-sm text-muted">Заезд: {formatDate(booking.checkin_date)}</p><p className="text-sm text-muted">Выезд: {formatDate(booking.checkout_date)}</p><p className="text-sm text-muted">Время заезда: {String(booking.arrival_time ?? "—").slice(0, 5)}</p><p className="text-sm text-muted">Держать до: {booking.hold_until ? formatDateTime(booking.hold_until) : "—"}</p><p className="text-sm text-muted">Тариф: {booking.rate_name}</p><p className="text-sm text-muted">Гостей: {booking.adults + booking.children}</p>{booking.special_requests && <p className="mt-2 text-sm text-terracotta">Пожелания: {booking.special_requests}</p>}</div>
+              <div className="rounded-xl bg-surface2 p-4"><img src={booking.room_image || roomImageByName(booking.room_type)} alt={booking.room_type} loading="lazy" className="mb-3 h-28 w-full rounded-lg object-cover" /><p className="label">Проживание</p><p className="mt-2 text-sm text-muted">Заезд: {formatDate(booking.checkin_date)}</p><p className="text-sm text-muted">Выезд: {formatDate(booking.checkout_date)}</p><p className="text-sm text-muted">Время заезда: {String(booking.arrival_time ?? "—").slice(0, 5)}</p><p className="text-sm text-muted">Держать до: {booking.hold_until ? formatDateTime(booking.hold_until) : "—"}</p><p className="text-sm text-muted">Тариф: {booking.rate_name}</p><p className="text-sm text-muted">Гостей: {booking.adults + booking.children}</p>{booking.special_requests && <p className="mt-2 text-sm text-terracotta">Пожелания: {booking.special_requests}</p>}</div>
             </div>
           </Card>
           <Card>

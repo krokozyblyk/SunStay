@@ -29,9 +29,17 @@ import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 import { useCurrency } from "../lib/currency";
 import { useFeatures } from "../lib/features";
-import { addDaysISO, formatDate, nightsBetween, todayISO } from "../lib/utils";
+import { addDaysISO, formatDate, nightsBetween, roomImageByName, todayISO } from "../lib/utils";
 import { Button, Card, ErrorState, Input, Select, Spinner, StatusPill, Textarea, useToast } from "../components/ui";
 import { homeForRole } from "../components/Layout";
+
+const DEMO_ACCOUNTS = [
+  { role: "Гость", email: "guest.demo@sunstay.example", password: "SunStay2026!" },
+  { role: "Менеджер", email: "smirnova@sunstay.example", password: "SunStay2026!" },
+  { role: "Хаускипинг", email: "fedorov@sunstay.example", password: "SunStay2026!" },
+  { role: "Управляющий отелем", email: "volkov@sunstay.example", password: "SunStay2026!" },
+  { role: "Администратор БД", email: "dba@sunstay.example", password: "SunStay2026!" },
+];
 
 const FALLBACK_ROOM_TYPES = [
   { room_type_id: 1, name: "Стандарт", capacity: 2, min_price: 4800, description: "Уютный номер с одной кроватью или двумя раздельными." },
@@ -82,7 +90,19 @@ function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checko
     queryKey: ["public-calendar", month],
     queryFn: () => api.get("/public/calendar", { params: { month } }).then((response) => response.data),
   });
-  const days = query.data?.days ?? [];
+  const fallbackDays = useMemo(() => {
+    const year = Number(month.slice(0, 4));
+    const monthNumber = Number(month.slice(5, 7));
+    const count = new Date(year, monthNumber, 0).getDate();
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return Array.from({ length: count }, (_, index) => {
+      const day = `${month}-${String(index + 1).padStart(2, "0")}`;
+      const date = new Date(year, monthNumber - 1, index + 1);
+      return { day, min_price: 0, available_rooms: 1, is_past: date < now };
+    });
+  }, [month]);
+  const days = query.data?.days ?? fallbackDays;
   const first = new Date(`${month}-01T12:00:00`);
   const offset = (first.getDay() + 6) % 7;
   const cells: Array<any | null> = [...Array(offset).fill(null), ...days];
@@ -136,7 +156,6 @@ function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checko
           );
         })}
       </div>
-      {query.isLoading && <div className="mt-3"><Spinner /></div>}
     </Card>
   );
 }
@@ -237,7 +256,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="relative">
-            <RoomArt index={0} imageUrl={roomTypes[0]?.image_url} className="h-[360px] shadow-float md:h-[440px]" />
+            <RoomArt index={0} imageUrl={roomTypes[0]?.image_url || roomImageByName(roomTypes[0]?.name)} className="h-[360px] shadow-float md:h-[440px]" />
             <Card className="mt-4">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <label className="col-span-1 flex flex-col gap-1.5">
@@ -304,7 +323,7 @@ export function LandingPage() {
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {roomTypes.map((room: any, index: number) => (
             <Card key={room.room_type_id} className="overflow-hidden p-0">
-              <RoomArt index={index} imageUrl={room.image_url} className="h-48 rounded-none" />
+              <RoomArt index={index} imageUrl={room.image_url || roomImageByName(room.name)} className="h-48 rounded-none" />
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -520,7 +539,7 @@ export function SearchPage() {
           {results.map((roomType: any, index: number) => (
             <Card key={roomType.room_type_id} className="overflow-hidden p-0">
               <div className="grid md:grid-cols-[220px_1fr]">
-                <RoomArt index={index} imageUrl={roomType.image_url} className="h-44 rounded-none md:h-full" />
+                <RoomArt index={index} imageUrl={roomType.image_url || roomImageByName(roomType.name)} className="h-44 rounded-none md:h-full" />
                 <div className="p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -696,7 +715,7 @@ export function CheckoutPage() {
           {bookingMutation.isError && <ErrorState message={getErrorMessage(bookingMutation.error)} />}
         </Card>
         <Card className="h-fit space-y-4">
-          <RoomArt index={1} imageUrl={roomImage} className="h-40" />
+          <RoomArt index={1} imageUrl={roomImage || roomImageByName(roomType)} className="h-40" />
           <div>
             <h2 className="font-display text-2xl font-semibold text-ink">{roomType}</h2>
             <p className="text-sm text-muted">Номер {roomNumber} · {nights} ночей</p>
@@ -872,7 +891,7 @@ export function LoginPage() {
           <div className="mt-6 rounded-2xl border border-line bg-surface2 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">Демо-доступ</p>
             <div className="mt-3 grid gap-2">
-              {(demoQuery.data ?? []).map((account: any) => (
+              {(demoQuery.data ?? DEMO_ACCOUNTS).map((account: any) => (
                 <button
                   key={account.email}
                   className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-left text-xs hover:border-terracotta/50"
@@ -885,7 +904,7 @@ export function LoginPage() {
                   <span className="text-muted">{account.email}</span>
                 </button>
               ))}
-              {demoQuery.isLoading && <p className="text-xs text-muted">Загрузка демо-аккаунтов…</p>}
+
             </div>
           </div>
         </div>

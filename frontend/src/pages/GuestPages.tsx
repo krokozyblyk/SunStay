@@ -27,7 +27,7 @@ import { useI18n } from "../lib/i18n";
 import { useFeatures } from "../lib/features";
 import { useToast } from "../components/ui";
 import { Button, Card, Drawer, EmptyState, ErrorState, Input, KpiCard, Modal, PageHeader, Select, Spinner, StatusPill, Tabs, Textarea } from "../components/ui";
-import { formatDate, formatDateTime, formatMoney, LINE_TYPE_LABELS, PAYMENT_METHOD_LABELS, statusLabel } from "../lib/utils";
+import { formatDate, formatDateTime, formatMoney, LINE_TYPE_LABELS, PAYMENT_METHOD_LABELS, roomImageByName, serviceImageByName, statusLabel } from "../lib/utils";
 
 function GuestPage({ children }: { children: ReactNode }) {
   return <>{children}</>;
@@ -376,7 +376,7 @@ export function GuestBookingDetailPage() {
         <div className="space-y-5">
           <Card>
             <h2 className="font-display text-2xl font-semibold">Проживание</h2>
-            {booking.room_image && <img src={booking.room_image} alt={booking.room_type} loading="lazy" className="mt-3 h-36 w-full rounded-xl object-cover" />}
+            <img src={booking.room_image || roomImageByName(booking.room_type)} alt={booking.room_type} loading="lazy" className="mt-3 h-36 w-full rounded-xl object-cover" />
             <div className="mt-4 space-y-2 text-sm text-muted">
               <div className="flex justify-between"><span>Заезд</span><span>{formatDate(booking.checkin_date)}</span></div>
               <div className="flex justify-between"><span>Выезд</span><span>{formatDate(booking.checkout_date)}</span></div>
@@ -634,7 +634,7 @@ export function GuestServicesPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {(servicesQuery.data ?? []).map((service: any) => (
               <Card key={service.service_id} className="flex flex-col justify-between">
-                {service.image_url && <img src={service.image_url} alt={service.name} loading="lazy" className="mb-3 h-28 w-full rounded-xl object-cover" />}
+                <img src={service.image_url || serviceImageByName(service.name)} alt={service.name} loading="lazy" className="mb-3 h-28 w-full rounded-xl object-cover" />
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-terracotta/12 text-terracotta"><Sparkles size={20} /></span>
