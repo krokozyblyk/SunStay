@@ -1,0 +1,12 @@
+name: Check hotel reviews
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check reviews for all roles
+        run: python3 scripts/review_check.py https://sunstay-api.onrender.com
