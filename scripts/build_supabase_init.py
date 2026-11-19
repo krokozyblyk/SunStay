@@ -20,6 +20,8 @@ FILES = [
     "015_images_features.sql",
     "016_demo_rooms.sql",
     "017_room_variants_demo_stay.sql",
+    "018_capacity_2fa_stock.sql",
+    "019_hotel_reviews.sql",
 ]
 
 parts = [

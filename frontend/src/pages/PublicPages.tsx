@@ -22,7 +22,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, getErrorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -193,13 +193,20 @@ function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checko
 
 function WaitlistForm({ checkin, checkout, guests, roomTypeId }: { checkin: string; checkout: string; guests: number; roomTypeId: string }) {
   const { toast } = useToast();
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", note: "" });
+  const { user } = useAuth();
+  const [form, setForm] = useState({
+    full_name: user?.full_name ?? "",
+    email: user?.email ?? "",
+    phone: user?.phone ?? "",
+    note: "",
+  });
+  const [category, setCategory] = useState(roomTypeId || "1");
   const mutation = useMutation({
     mutationFn: () => api.post("/public/waitlist", {
       full_name: form.full_name,
       email: form.email || null,
       phone: form.phone || null,
-      room_type_id: roomTypeId ? Number(roomTypeId) : null,
+      room_type_id: Number(category),
       checkin_date: checkin,
       checkout_date: checkout,
       adults: guests,
@@ -208,7 +215,7 @@ function WaitlistForm({ checkin, checkout, guests, roomTypeId }: { checkin: stri
     }).then((response) => response.data),
     onSuccess: () => {
       toast("Заявка в лист ожидания создана. Мы свяжемся с вами.", "success");
-      setForm({ full_name: "", email: "", phone: "", note: "" });
+      setForm({ full_name: user?.full_name ?? "", email: user?.email ?? "", phone: user?.phone ?? "", note: "" });
     },
     onError: (error) => toast(getErrorMessage(error), "error"),
   });
@@ -219,12 +226,15 @@ function WaitlistForm({ checkin, checkout, guests, roomTypeId }: { checkin: stri
         <h3 className="mt-1 font-display text-2xl font-semibold text-ink">Встать в лист ожидания</h3>
         <p className="mt-1 text-sm text-muted">Оставьте контакты — менеджер свяжется, если номер освободится на {formatDate(checkin)} — {formatDate(checkout)}.</p>
       </div>
+      <Select label="Категория номера" value={category} onChange={(event) => setCategory(event.target.value)}>
+        <option value="1">Стандарт</option><option value="2">Комфорт</option><option value="3">Люкс</option>
+      </Select>
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="ФИО" value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} placeholder="Иванов Иван" />
         <Input label="Телефон" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+7 900 111-22-33" />
         <Input label="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="guest@example.com" />
-        <Input label="Комментарий" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="Пожелания по номеру" />
       </div>
+      <Input label="Комментарий (необязательно)" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="Пожелания по номеру" />
       <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || form.full_name.trim().length < 3}>
         <MessageSquare size={15} /> {mutation.isPending ? "Отправляем…" : "Оставить заявку"}
       </Button>
@@ -425,15 +435,17 @@ export function LandingPage() {
         </div>
       </section>
 
-      {features.reviews && (
       <section className="mx-auto max-w-[1240px] px-4 pb-20 md:px-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="label text-terracotta">{en ? "Guest reviews" : "Отзывы гостей"}</p>
             <h2 className="mt-2 font-display text-3xl font-semibold text-ink">{en ? "What guests say after their stay" : "Что говорят после проживания"}</h2>
           </div>
-          <p className="max-w-md text-sm leading-6 text-muted">{en ? "You can leave a review after check-out. All reviews are moderated." : "Отзыв можно оставить в личном кабинете после выезда. Все отзывы проходят модерацию."}</p>
+          <p className="max-w-md text-sm leading-6 text-muted">{en ? "Reviews are published instantly. Moderators can hide them afterwards." : "Отзывы публикуются сразу. Администратор может их модерировать после публикации."}</p>
         </div>
+        {!features.reviews ? (
+          <p className="mt-8 rounded-xl bg-surface2 p-5 text-sm text-muted">Отзывы временно недоступны.</p>
+        ) : (
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {(reviewsQuery.data ?? []).map((review: any) => (
             <Card key={review.review_id} className="flex flex-col">
@@ -447,8 +459,8 @@ export function LandingPage() {
             </Card>
           ))}
         </div>
+        )}
       </section>
-      )}
     </div>
   );
 }
@@ -456,7 +468,6 @@ export function LandingPage() {
 export function SearchPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { format } = useCurrency();
   const features = useFeatures();
   const checkin = params.get("checkin") || addDaysISO(todayISO(), 7);
@@ -508,11 +519,7 @@ export function SearchPage() {
       variant: room.variant_name || "",
       description: room.description || "",
     });
-    const target = `/checkout?${next.toString()}`;
-    if (!user) {
-      navigate("/login", { state: { from: target } });
-      return;
-    }
+    const target = `/rooms/${room.room_id}?${next.toString()}`;
     navigate(target);
   }
 

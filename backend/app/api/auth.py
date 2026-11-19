@@ -350,11 +350,25 @@ async def verify_2fa(payload: TwoFactorVerifyRequest, request: Request, conn: As
     return await issue_tokens(conn, user)
 
 
+@router.get("/2fa/status")
+async def twofa_status(user: dict = Depends(get_current_user), conn: AsyncConnection = Depends(get_db)):
+    cur = await conn.execute(
+        "SELECT totp_enabled, totp_setup_requested, totp_secret_enc IS NOT NULL AS has_secret FROM users WHERE user_id = %s",
+        (user["user_id"],),
+    )
+    row = await cur.fetchone()
+    return {
+        "enabled": bool(row["totp_enabled"]),
+        "setup_requested": bool(row["totp_setup_requested"]),
+        "has_secret": bool(row["has_secret"]),
+    }
+
+
 @router.post("/2fa/setup")
 async def setup_2fa(user: dict = Depends(get_current_user), conn: AsyncConnection = Depends(get_db)):
     secret = pyotp.random_base32()
     await conn.execute(
-        "UPDATE users SET totp_secret_enc = %s, totp_enabled = FALSE WHERE user_id = %s",
+        "UPDATE users SET totp_secret_enc = %s, totp_enabled = FALSE, totp_setup_requested = TRUE WHERE user_id = %s",
         (encrypt_value(secret), user["user_id"]),
     )
     uri = pyotp.TOTP(secret).provisioning_uri(name=user["email"], issuer_name="SunStay")
@@ -370,7 +384,7 @@ async def enable_2fa(payload: TwoFactorEnableRequest, user: dict = Depends(get_c
         raise HTTPException(status_code=400, detail="Неверный код")
     codes, hashed = _generate_recovery_codes()
     await conn.execute(
-        "UPDATE users SET totp_enabled = TRUE, totp_recovery_codes = %s WHERE user_id = %s",
+        "UPDATE users SET totp_enabled = TRUE, totp_setup_requested = TRUE, totp_recovery_codes = %s WHERE user_id = %s",
         (Jsonb(hashed), user["user_id"]),
     )
     return {"ok": True, "recovery_codes": codes}
@@ -383,7 +397,7 @@ async def disable_2fa(payload: TwoFactorDisableRequest, user: dict = Depends(get
     if not row or not verify_password(payload.password, row["password_hash"]):
         raise HTTPException(status_code=400, detail="Неверный пароль")
     await conn.execute(
-        "UPDATE users SET totp_enabled = FALSE, totp_secret_enc = NULL, totp_recovery_codes = NULL WHERE user_id = %s",
+        "UPDATE users SET totp_enabled = FALSE, totp_setup_requested = FALSE, totp_secret_enc = NULL, totp_recovery_codes = NULL WHERE user_id = %s",
         (user["user_id"],),
     )
     return {"ok": True}
@@ -416,7 +430,7 @@ async def disable_2fa_with_code(
     await conn.execute(
         """
         UPDATE users
-        SET totp_enabled = FALSE, totp_secret_enc = NULL, totp_recovery_codes = NULL
+        SET totp_enabled = FALSE, totp_setup_requested = FALSE, totp_secret_enc = NULL, totp_recovery_codes = NULL
         WHERE user_id = %s
         """,
         (user["user_id"],),

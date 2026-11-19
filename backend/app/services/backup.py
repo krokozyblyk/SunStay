@@ -15,6 +15,24 @@ def backup_path() -> Path:
     return Path(settings.backup_dir) / settings.backup_file_name
 
 
+def ensure_valid_backup() -> dict:
+    """Return info about a usable backup, regenerating it if missing or empty.
+
+    Render's free tier has an ephemeral filesystem: the dump file can disappear
+    after an instance restart. Recreate it on demand so verify/download/restore
+    never fail just because the dyno was recycled.
+    """
+    path = backup_path()
+    if path.exists() and path.stat().st_size > 0:
+        return {
+            "filename": path.name,
+            "size": path.stat().st_size,
+            "status": "success",
+            "error": None,
+        }
+    return run_backup_sync()
+
+
 def run_backup_sync() -> dict:
     settings = get_settings()
     path = backup_path()

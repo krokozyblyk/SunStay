@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any, Iterable
 
@@ -14,8 +14,12 @@ from psycopg import AsyncConnection
 def json_value(value: Any) -> Any:
     if isinstance(value, Decimal):
         return float(value)
-    if isinstance(value, (date, datetime)):
+    if isinstance(value, (date, datetime, time)):
         return value.isoformat()
+    if isinstance(value, dict):
+        return {key: json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_value(item) for item in value]
     return value
 
 
@@ -67,6 +71,7 @@ async def get_booking(conn: AsyncConnection, booking_id: int) -> dict[str, Any]:
             g.email AS guest_email,
             r.room_number,
             rt.name AS room_type,
+            COALESCE(r.capacity, rt.capacity) AS room_capacity,
             r.image_url AS room_image,
             r.description AS room_description,
             r.variant_name AS room_variant,

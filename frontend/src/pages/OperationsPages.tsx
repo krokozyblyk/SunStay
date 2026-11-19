@@ -371,8 +371,8 @@ export function ConsumablesPage() {
                 const min = Number(item.min_stock || 0);
                 const stock = Number(item.stock_quantity || 0);
                 const ratio = min > 0 ? stock / min : 1;
-                const tone = ratio <= 0.5 ? "danger" : ratio <= 1 ? "warning" : "success";
-                const label = ratio <= 0.5 ? "Критично мало" : ratio <= 1 ? "Ниже нормы" : "В норме";
+                const tone = stock <= 0 || ratio <= 0.5 ? "danger" : ratio <= 1 ? "warning" : "success";
+                const label = stock <= 0 ? "Нет в наличии" : ratio <= 0.5 ? "Критично мало" : ratio <= 1 ? "Ниже нормы" : "В норме";
                 return (
                   <tr key={item.consumable_id}>
                     <td className="font-medium">{item.name}</td>
@@ -380,7 +380,10 @@ export function ConsumablesPage() {
                     <td className="font-semibold">{formatNumber(stock)}</td>
                     <td>{formatNumber(min)}</td>
                     <td>{formatNumber(item.used_total)}</td>
-                    <td><Badge tone={tone}>{label}</Badge></td>
+                    <td>
+                      <Badge tone={tone}>{label}</Badge>
+                      {stock <= 0 && <p className="mt-1 max-w-[220px] text-xs text-danger">Осталось 0 товаров. Сообщите управляющему пополнить запасы.</p>}
+                    </td>
                     <td className="text-right"><Button variant="ghost" size="sm" onClick={() => { setForm({ ...form, consumable_id: String(item.consumable_id) }); setWriteOffOpen(true); }}>Списать</Button></td>
                   </tr>
                 );

@@ -77,6 +77,7 @@ import {
   roomImageByName,
   statusClass,
   statusLabel,
+  statusTextClass,
   todayISO,
 } from "../lib/utils";
 
@@ -151,11 +152,17 @@ function NewBookingModal({
 
   const selectedRoom = (roomsQuery.data ?? []).find((room: any) => room.room_id === Number(roomId));
   const rates = (ratesQuery.data ?? []).filter((rate: any) => !selectedRoom || rate.room_type_id === selectedRoom.room_type_id);
+  const lastNight = addDaysISO(checkout, -1);
+  const seasonalRates = rates.filter((rate: any) =>
+    (!rate.season_start || rate.season_start <= checkin) &&
+    (!rate.season_end || rate.season_end >= lastNight)
+  );
   useEffect(() => {
-    if (rates.length && !rates.some((rate: any) => rate.rate_id === Number(rateId))) {
-      setRateId(rates[0].rate_id);
+    const pool = seasonalRates.length ? seasonalRates : rates;
+    if (pool.length && !pool.some((rate: any) => rate.rate_id === Number(rateId))) {
+      setRateId(pool[0].rate_id);
     }
-  }, [rates, rateId]);
+  }, [roomId, checkin, checkout, ratesQuery.data]);
 
   const guests = (guestsQuery.data ?? []).filter((guest: any) => {
     if (!guestSearch) return true;
@@ -511,7 +518,7 @@ export function RoomGridPage() {
                 <tr key={room.room_id} className="border-t border-line">
                   <td className="sticky left-0 z-10 bg-surface px-4 py-2.5">
                     <p className="font-semibold text-ink">№{room.room_number}</p>
-                    <p className="text-[11px] text-muted">{room.room_type} · {statusLabel(room.status)}</p>
+                    <p className={`text-[11px] ${statusTextClass(room.status)}`}>{room.room_type} · {statusLabel(room.status)}</p>
                   </td>
                   {days.map((day) => {
                     const booking = bookingFor(room.room_id, day);
@@ -1237,6 +1244,14 @@ export function WaitlistPage() {
   const [convertForm, setConvertForm] = useState({ room_id: "", rate_id: "", document_number: "" });
   const roomsQuery = useQuery({ queryKey: ["manager-rooms"], queryFn: () => api.get("/manager/rooms").then((response) => response.data) });
   const ratesQuery = useQuery({ queryKey: ["manager-rates"], queryFn: () => api.get("/manager/rates").then((response) => response.data) });
+  const convertRoom = (roomsQuery.data ?? []).find((room: any) => String(room.room_id) === convertForm.room_id);
+  useEffect(() => {
+    if (!convertRoom) return;
+    const matching = (ratesQuery.data ?? []).filter((rate: any) => rate.room_type_id === convertRoom.room_type_id);
+    if (matching.length && !matching.some((rate: any) => String(rate.rate_id) === convertForm.rate_id)) {
+      setConvertForm((current) => ({ ...current, rate_id: String(matching[0].rate_id) }));
+    }
+  }, [convertForm.room_id, ratesQuery.data]);
   const convertMutation = useMutation({
     mutationFn: () => api.post(`/manager/waitlist/${convertEntry.waitlist_id}/convert`, {
       room_id: Number(convertForm.room_id),
@@ -1316,7 +1331,7 @@ export function WaitlistPage() {
           </Select>
           <Select label="Тариф" value={convertForm.rate_id} onChange={(event) => setConvertForm({ ...convertForm, rate_id: event.target.value })}>
             <option value="">Выберите тариф</option>
-            {(ratesQuery.data ?? []).map((rate: any) => <option key={rate.rate_id} value={rate.rate_id}>{rate.name} · {formatMoney(rate.price_per_night)}</option>)}
+            {(ratesQuery.data ?? []).filter((rate: any) => !convertRoom || rate.room_type_id === convertRoom.room_type_id).map((rate: any) => <option key={rate.rate_id} value={rate.rate_id}>{rate.name} · {formatMoney(rate.price_per_night)}</option>)}
           </Select>
           <Input label="Документ гостя" value={convertForm.document_number} onChange={(event) => setConvertForm({ ...convertForm, document_number: event.target.value })} placeholder="4510 123456" />
           <p className="text-xs text-muted">Гость: {convertEntry?.guest_name} · {formatDate(convertEntry?.checkin_date)} — {formatDate(convertEntry?.checkout_date)}</p>
@@ -1334,13 +1349,6 @@ export function FloorPlanPage() {
   if (query.isLoading) return <Spinner />;
   if (query.isError) return <ErrorState message={getErrorMessage(query.error)} />;
   const floors = query.data ?? [];
-  const statusTone = (status: string) => {
-    if (status === "ЗАСЕЛЁН") return "bg-sky-500/12 text-sky-700";
-    if (status === "ГОТОВ") return "bg-emerald-500/12 text-emerald-700";
-    if (status === "ЗАБРОНИРОВАН") return "bg-amber-500/14 text-amber-700";
-    if (status === "ТРЕБУЕТ УБОРКИ") return "bg-rose-500/12 text-rose-700";
-    return "bg-surface2 text-muted";
-  };
   return (
     <div className="space-y-6">
       <PageHeader title="План этажа" subtitle="Схематичное расположение номеров по этажам и их текущий статус." />
@@ -1352,7 +1360,7 @@ export function FloorPlanPage() {
               <div key={room.room_id} className={`rounded-xl border border-line p-4 ${room.booking_id ? "bg-terracotta/6" : "bg-surface"}`}>
                 <div className="flex items-center justify-between">
                   <p className="font-display text-xl font-semibold">№{room.room_number}</p>
-                  <span className={`badge ${statusTone(room.status)}`}>{room.status}</span>
+                  <span className={`status-pill ${statusClass(room.status)}`}>{statusLabel(room.status)}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted">{room.room_type} · до {room.capacity} гостей</p>
                 {room.booking_id ? (

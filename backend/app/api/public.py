@@ -147,9 +147,9 @@ async def public_reviews(limit: int = Query(6, ge=1, le=30), conn: AsyncConnecti
             rt.name AS room_type
         FROM reviews r
         JOIN guests g ON g.guest_id = r.guest_id
-        JOIN bookings b ON b.booking_id = r.booking_id
-        JOIN rooms rm ON rm.room_id = b.room_id
-        JOIN room_types rt ON rt.room_type_id = rm.room_type_id
+        LEFT JOIN bookings b ON b.booking_id = r.booking_id
+        LEFT JOIN rooms rm ON rm.room_id = b.room_id
+        LEFT JOIN room_types rt ON rt.room_type_id = rm.room_type_id
         WHERE r.status = 'APPROVED'
         ORDER BY r.created_at DESC
         LIMIT %s
@@ -254,7 +254,8 @@ async def availability(
                         'image_url', r.image_url,
                         'description', r.description,
                         'variant_name', r.variant_name,
-                        'floor', r.floor
+                        'floor', r.floor,
+                        'capacity', COALESCE(r.capacity, rt.capacity)
                     ) ORDER BY r.room_number), '[]'::json)
                  FROM rooms r
                  JOIN LATERAL (
@@ -269,7 +270,11 @@ async def availability(
                  WHERE r.room_type_id = rt.room_type_id
                    AND fn_room_available(r.room_id, %s, %s)) AS rooms
             FROM room_types rt
-            WHERE rt.capacity >= %s
+            WHERE EXISTS (
+                SELECT 1 FROM rooms r
+                WHERE r.room_type_id = rt.room_type_id
+                  AND COALESCE(r.capacity, rt.capacity) >= %s
+            )
             {type_filter}
         ) q
         WHERE q.available_rooms > 0
@@ -605,3 +610,50 @@ async def create_public_booking(
             (idempotency_key, user["user_id"] if user else None, Jsonb(booking)),
         )
     return booking
+
+
+@router.get("/rooms/{room_id}")
+async def public_room(room_id: int, conn: AsyncConnection = Depends(get_db)):
+    cur = await conn.execute(
+        """
+        SELECT r.room_id, r.room_number, r.floor, r.image_url, r.description, r.variant_name,
+               COALESCE(r.capacity, rt.capacity) AS capacity,
+               rt.room_type_id, rt.name AS room_type, rt.description AS room_type_description,
+               rs.name AS status,
+               (SELECT MIN(rp.price_per_night) FROM rate_plans rp
+                WHERE rp.room_type_id = r.room_type_id
+                  AND CURRENT_DATE BETWEEN rp.season_start AND rp.season_end) AS price_per_night,
+               (SELECT MIN(rp.rate_id) FROM rate_plans rp
+                WHERE rp.room_type_id = r.room_type_id
+                  AND CURRENT_DATE BETWEEN rp.season_start AND rp.season_end) AS rate_id,
+               (SELECT COALESCE(json_agg(a.name), '[]'::json)
+                FROM room_amenities ra JOIN amenities a ON a.amenity_id = ra.amenity_id
+                WHERE ra.room_id = r.room_id) AS amenities
+        FROM rooms r
+        JOIN room_types rt ON rt.room_type_id = r.room_type_id
+        JOIN room_statuses rs ON rs.status_id = r.status_id
+        WHERE r.room_id = %s
+        """,
+        (room_id,),
+    )
+    room = await cur.fetchone()
+    if not room:
+        raise HTTPException(status_code=404, detail="Номер не найден")
+    result = row_to_dict(room)
+    reviews_cur = await conn.execute(
+        """
+        SELECT r.review_id, r.rating, r.title, r.body, r.created_at,
+               split_part(g.full_name, ' ', 1) || ' ' ||
+                   COALESCE(left(split_part(g.full_name, ' ', 2), 1) || '.', '') AS guest_name
+        FROM reviews r
+        JOIN guests g ON g.guest_id = r.guest_id
+        WHERE r.status = 'APPROVED' AND (r.booking_id IN (
+            SELECT booking_id FROM bookings WHERE room_id = %s
+        ) OR r.review_type = 'HOTEL')
+        ORDER BY r.created_at DESC
+        LIMIT 6
+        """,
+        (room_id,),
+    )
+    result["reviews"] = rows_to_dicts(await reviews_cur.fetchall())
+    return result

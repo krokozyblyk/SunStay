@@ -402,16 +402,20 @@ async def create_review(
     user: dict = Depends(require_guest),
     conn: AsyncConnection = Depends(get_db),
 ):
-    booking = await get_booking(conn, payload.booking_id)
-    if booking.get("guest_id") != user["guest_id"]:
-        raise HTTPException(status_code=403, detail="Нет доступа к этой брони")
-    if booking["status"] != "CHECKED_OUT":
-        raise HTTPException(status_code=400, detail="Отзыв можно оставить после выезда")
+    if payload.booking_id:
+        booking = await get_booking(conn, payload.booking_id)
+        if booking.get("guest_id") != user["guest_id"]:
+            raise HTTPException(status_code=403, detail="Нет доступа к этой брони")
+        if booking["status"] != "CHECKED_OUT":
+            raise HTTPException(status_code=400, detail="Отзыв по брони можно оставить после выезда")
+        review_type = "BOOKING"
+    else:
+        review_type = "HOTEL"
 
     cur = await conn.execute(
         """
-        INSERT INTO reviews (booking_id, guest_id, rating, title, body)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO reviews (booking_id, guest_id, rating, title, body, review_type, status)
+        VALUES (%s, %s, %s, %s, %s, %s, 'APPROVED')
         ON CONFLICT (booking_id) DO NOTHING
         RETURNING review_id, status, created_at
         """,
@@ -421,6 +425,7 @@ async def create_review(
             payload.rating,
             payload.title,
             payload.body,
+            review_type,
         ),
     )
     review = await cur.fetchone()

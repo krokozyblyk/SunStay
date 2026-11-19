@@ -355,7 +355,8 @@ function navForRole(role: string, t: (key: string) => string, loyaltyEnabled = t
   const waitlist = { to: "/app/waitlist", label: "Лист ожидания", icon: <ListPlus size={18} /> };
   const floorPlan = { to: "/app/floor-plan", label: "План этажа", icon: <Home size={18} /> };
   const backups = { to: "/app/admin/backups", label: t("backups"), icon: <DatabaseBackup size={18} /> };
-  const settings = { to: "/app/admin/settings", label: t("settings"), icon: <Settings size={18} /> };
+  const settings = { to: "/app/settings", label: t("settings"), icon: <Settings size={18} /> };
+  const systemSettings = { to: "/app/admin/settings", label: "Системные настройки", icon: <Settings size={18} /> };
   const employees = { to: "/app/employees", label: t("employees"), icon: <Users size={18} /> };
 
   if (role === "GUEST") {
@@ -374,20 +375,20 @@ function navForRole(role: string, t: (key: string) => string, loyaltyEnabled = t
     ];
   }
   if (role === "HOUSEKEEPING") {
-    return [{ group: "Операции", items: [hk, maintenance, consumables] }];
+    return [{ group: "Операции", items: [hk, maintenance, consumables] }, { group: "Аккаунт", items: [settings] }];
   }
   if (role === "MANAGER") {
-    return [{ group: "Управление", items: [dashboard, grid, floorPlan, bookings, folios, waitlist, hk, reports] }];
+    return [{ group: "Управление", items: [dashboard, grid, floorPlan, bookings, folios, waitlist, hk, reports] }, { group: "Аккаунт", items: [settings] }];
   }
   if (role === "HOTEL_MANAGER") {
     return [
       { group: "Управление", items: [dashboard, reports, grid, floorPlan, bookings, folios, waitlist, hk] },
-      { group: "Администрирование", items: [directories, employees, reviews, audit] },
+      { group: "Администрирование", items: [directories, employees, reviews, audit, settings] },
     ];
   }
   return [
     { group: "Управление", items: [dashboard, grid, floorPlan, bookings, folios, waitlist, hk, reports] },
-    { group: "Администрирование", items: [users, sessions, directories, reviews, audit, backups, maintenance, consumables, settings] },
+    { group: "Администрирование", items: [users, sessions, directories, reviews, audit, backups, maintenance, consumables, settings, systemSettings] },
   ];
 }
 

@@ -246,7 +246,7 @@ class WaitlistConvertRequest(BaseModel):
 
 
 class ReviewCreate(BaseModel):
-    booking_id: int
+    booking_id: int | None = None
     rating: int = Field(ge=1, le=5)
     title: str | None = Field(default=None, max_length=150)
     body: str = Field(min_length=10, max_length=2000)

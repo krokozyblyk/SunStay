@@ -1,0 +1,198 @@
+import { useState } from "react";
+import { ArrowRight, Star } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, getErrorMessage } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { useCurrency } from "../lib/currency";
+import { useFeatures } from "../lib/features";
+import { addDaysISO, formatDate, resolveImage, roomImageByName, todayISO } from "../lib/utils";
+import { Button, Card, ErrorState, Input, PageHeader, Select, Spinner, Textarea, useToast } from "../components/ui";
+
+function ReviewStars({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5 text-amber">
+      {[1, 2, 3, 4, 5].map((value) => <Star key={value} size={14} className={value <= rating ? "fill-current" : "opacity-25"} />)}
+    </div>
+  );
+}
+
+const FALLBACK = [
+  { name: "Стандарт", image_url: "images/room-standard.jpg", min_price: 4000 },
+  { name: "Комфорт", image_url: "images/room-comfort.jpg", min_price: 5600 },
+  { name: "Люкс", image_url: "images/room-lux.jpg", min_price: 9200 },
+];
+
+export function RoomPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { format } = useCurrency();
+  const features = useFeatures();
+  const [guests, setGuests] = useState(2);
+  const query = useQuery({
+    queryKey: ["public-room", id],
+    queryFn: () => api.get(`/public/rooms/${id}`).then((response) => response.data),
+    enabled: Boolean(id),
+  });
+  const roomTypesQuery = useQuery({
+    queryKey: ["public-room-types"],
+    queryFn: () => api.get("/public/room-types").then((response) => response.data),
+  });
+  if (query.isLoading) return <div className="mx-auto max-w-6xl px-4 py-16"><Spinner /></div>;
+  if (query.isError || !query.data) return <div className="mx-auto max-w-6xl px-4 py-16"><ErrorState message="Номер не найден" /></div>;
+  const room = query.data;
+  const gallery = Array.from(new Set([
+    room.image_url,
+    roomImageByName(room.room_type),
+    ...(roomTypesQuery.data ?? FALLBACK).map((item: any) => item.image_url),
+  ].filter(Boolean))).slice(0, 5);
+  const capacity = Number(room.capacity || 2);
+  const goCheckout = () => {
+    const next = new URLSearchParams({
+      room_id: String(room.room_id),
+      rate_id: String(room.rate_id || 1),
+      checkin: addDaysISO(todayISO(), 7),
+      checkout: addDaysISO(todayISO(), 10),
+      price: String(room.price_per_night || 0),
+      room_type: room.room_type,
+      room_number: room.room_number,
+      guests: String(guests),
+      image: room.image_url || "",
+    });
+    const target = `/checkout?${next.toString()}`;
+    if (!user) { navigate("/login", { state: { from: target } }); return; }
+    navigate(target);
+  };
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 md:px-6">
+      <Link to="/search" className="btn-ghost">← Назад к поиску</Link>
+      <PageHeader title={`${room.room_type} · номер ${room.room_number}`} subtitle={`${room.variant_name || "Номер"} · этаж ${room.floor ?? "—"} · до ${capacity} гостей`} />
+      <div className="grid gap-2 md:grid-cols-4">
+        {gallery.map((src, index) => <img key={src + index} src={resolveImage(src)} alt={`${room.room_type} ${index + 1}`} className="h-52 w-full rounded-2xl object-cover" />)}
+      </div>
+      <Card className="space-y-4">
+        <h2 className="font-display text-3xl font-semibold">{room.variant_name || room.room_type}</h2>
+        <p className="text-sm leading-7 text-muted">{room.description || room.room_type_description}</p>
+        <div className="flex flex-wrap gap-2">{(room.amenities ?? []).map((amenity: string) => <span key={amenity} className="badge bg-surface2 text-muted">{amenity}</span>)}</div>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4">
+          <div><p className="font-display text-3xl font-semibold">{format(room.price_per_night)}</p><p className="text-xs text-muted">за ночь</p></div>
+          <div className="flex items-center gap-3">
+            <Select label="Гостей" value={guests} onChange={(event) => setGuests(Number(event.target.value))}>
+              {Array.from({ length: capacity }, (_, i) => i + 1).map((value) => <option key={value} value={value}>{value}</option>)}
+            </Select>
+            <Button className="mt-6" onClick={goCheckout}>Выбрать <ArrowRight size={15} /></Button>
+          </div>
+        </div>
+      </Card>
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <h2 className="font-display text-2xl font-semibold">Отзывы</h2>
+          {!features.reviews ? (
+            <p className="mt-3 rounded-xl bg-surface2 p-4 text-sm text-muted">Отзывы временно недоступны.</p>
+          ) : (room.reviews ?? []).length ? (
+            <div className="mt-4 space-y-3">
+              {room.reviews.map((review: any) => (
+                <div key={review.review_id} className="rounded-xl border border-line p-4">
+                  <div className="flex items-center justify-between gap-3"><ReviewStars rating={Number(review.rating)} /><span className="text-xs text-muted">{formatDate(review.created_at)}</span></div>
+                  <h3 className="mt-2 font-semibold">{review.title || "Отзыв"}</h3>
+                  <p className="mt-1 text-sm text-muted">{review.body}</p>
+                  <p className="mt-2 text-xs text-muted">{review.guest_name}</p>
+                </div>
+              ))}
+            </div>
+          ) : <p className="mt-3 text-sm text-muted">Отзывов пока нет.</p>}
+        </Card>
+        <Card>
+          <h2 className="font-display text-2xl font-semibold">Другие предложения</h2>
+          <div className="mt-4 space-y-2">
+            {(roomTypesQuery.data ?? FALLBACK).filter((item: any) => item.name !== room.room_type && item.room_type_id !== room.room_type_id).map((item: any, index: number) => (
+              <Link key={index} to="/search" className="flex items-center gap-3 rounded-xl border border-line p-2 hover:bg-surface2">
+                <img src={resolveImage(item.image_url || roomImageByName(item.name))} alt={item.name} className="h-14 w-20 rounded-lg object-cover" />
+                <div><p className="text-sm font-semibold">{item.name}</p><p className="text-xs text-muted">от {format(item.min_price)}</p></div>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export function HotelPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const features = useFeatures();
+  const [rating, setRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewBody, setReviewBody] = useState("");
+  const reviewsQuery = useQuery({
+    queryKey: ["public-reviews"],
+    queryFn: () => api.get("/public/reviews", { params: { limit: 12 } }).then((response) => response.data),
+  });
+  const roomTypesQuery = useQuery({
+    queryKey: ["public-room-types"],
+    queryFn: () => api.get("/public/room-types").then((response) => response.data),
+  });
+  const reviewMutation = useMutation({
+    mutationFn: () => api.post("/guest/reviews", { rating, title: reviewTitle || null, body: reviewBody }).then((response) => response.data),
+    onSuccess: () => {
+      toast("Спасибо! Отзыв опубликован.", "success");
+      setReviewTitle(""); setReviewBody(""); setRating(5);
+      queryClient.invalidateQueries({ queryKey: ["public-reviews"] });
+    },
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 md:px-6">
+      <PageHeader title="SunStay" subtitle="Бутик-отель в центре Санкт-Петербурга · набережная Мойки, 12" />
+      <div className="grid gap-2 md:grid-cols-4">
+        {(roomTypesQuery.data ?? FALLBACK).map((room: any, index: number) => (
+          <img key={index} src={resolveImage(room.image_url || roomImageByName(room.name))} alt={room.name} className="h-52 w-full rounded-2xl object-cover" />
+        ))}
+      </div>
+      <Card>
+        <h2 className="font-display text-2xl font-semibold">Об отеле</h2>
+        <p className="mt-3 text-sm leading-7 text-muted">48 номеров, тихий внутренний двор и внимательный сервис. Бронируйте напрямую — без скрытых комиссий и лишних звонков.</p>
+        <div className="mt-4 flex flex-wrap gap-2"><span className="badge bg-surface2 text-muted">Wi-Fi</span><span className="badge bg-surface2 text-muted">Завтрак</span><span className="badge bg-surface2 text-muted">Парковка</span></div>
+        <Link to="/search" className="btn-primary mt-5">Посмотреть номера <ArrowRight size={15} /></Link>
+      </Card>
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <h2 className="font-display text-2xl font-semibold">Отзывы гостей</h2>
+          {!features.reviews ? (
+            <p className="mt-3 rounded-xl bg-surface2 p-4 text-sm text-muted">Отзывы временно недоступны.</p>
+          ) : (reviewsQuery.data ?? []).length ? (
+            <div className="mt-4 space-y-3">
+              {(reviewsQuery.data ?? []).map((review: any) => (
+                <div key={review.review_id} className="rounded-xl border border-line p-4">
+                  <div className="flex items-center justify-between gap-3"><ReviewStars rating={Number(review.rating)} /><span className="text-xs text-muted">{formatDate(review.created_at)}</span></div>
+                  <h3 className="mt-2 font-semibold">{review.title || "Отзыв"}</h3>
+                  <p className="mt-1 text-sm text-muted">{review.body}</p>
+                  <p className="mt-2 text-xs text-muted">{review.guest_name}{review.room_type ? ` · ${review.room_type}` : ""}</p>
+                </div>
+              ))}
+            </div>
+          ) : <p className="mt-3 text-sm text-muted">Отзывов пока нет.</p>}
+        </Card>
+        {features.reviews && (
+          <Card className="space-y-3">
+            <h2 className="font-display text-2xl font-semibold">Оставить отзыв</h2>
+            {user?.role_code === "GUEST" ? (
+              <>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" onClick={() => setRating(value)}><Star size={24} className={value <= rating ? "fill-amber text-amber" : "text-muted/40"} /></button>)}
+                </div>
+                <Input label="Заголовок" value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} />
+                <Textarea label="Отзыв" value={reviewBody} onChange={(event) => setReviewBody(event.target.value)} rows={5} />
+                <Button onClick={() => reviewMutation.mutate()} disabled={reviewMutation.isPending || reviewBody.trim().length < 10}>Опубликовать</Button>
+              </>
+            ) : <p className="text-sm text-muted">Войдите как гость, чтобы оставить отзыв.</p>}
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}

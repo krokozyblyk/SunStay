@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell, PublicLayout, RequireAuth, RequireRole } from "./components/Layout";
 import { PageSkeleton } from "./components/PageState";
 import { LandingPage, SearchPage, CheckoutPage, ConfirmationPage, LoginPage } from "./pages/PublicPages";
+import { RoomPage, HotelPage } from "./pages/RoomHotelPages";
+import { StaffSettingsPage } from "./pages/StaffSettingsPage";
 import {
   GuestBookingDetailPage,
   GuestBookingsPage,
@@ -44,6 +46,8 @@ export default function App() {
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/hotel" element={<HotelPage />} />
+        <Route path="/rooms/:id" element={<RoomPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/confirmation" element={<ConfirmationPage />} />
       </Route>
@@ -77,6 +81,7 @@ export default function App() {
         <Route path="/app/admin/reviews" element={<RequireRole roles={["HOTEL_MANAGER", "DB_ADMIN"]}><AdminReviewsPage /></RequireRole>} />
         <Route path="/app/admin/backups" element={<RequireRole roles={["DB_ADMIN"]}><AdminBackupsPage /></RequireRole>} />
         <Route path="/app/admin/sessions" element={<RequireRole roles={["DB_ADMIN"]}><AdminSessionsPage /></RequireRole>} />
+        <Route path="/app/settings" element={<StaffSettingsPage />} />
         <Route path="/app/admin/settings" element={<RequireRole roles={["DB_ADMIN"]}><AdminSettingsPage /></RequireRole>} />
       </Route>
 

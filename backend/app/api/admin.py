@@ -29,7 +29,7 @@ from ..schemas import (
     UserUpdate,
 )
 from ..security import hash_password
-from ..services.backup import backup_path, run_backup_sync
+from ..services.backup import backup_path, ensure_valid_backup, run_backup_sync
 from ..utils import csv_response, row_to_dict, rows_to_dicts
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -152,7 +152,7 @@ async def users(
     cur = await conn.execute(
         f"""
         SELECT u.user_id, u.role_id, r.name AS role_name, u.full_name, u.email, u.phone,
-               u.is_active, u.last_login_at, u.last_seen_at, u.created_at,
+               u.is_active, u.last_login_at, u.last_seen_at, u.created_at, u.totp_enabled,
                COALESCE(u.is_active AND u.last_seen_at >= now() - interval '5 minutes', FALSE) AS is_online,
                u.block_reason, u.blocked_at,
                bu.full_name AS blocked_by_name,
@@ -653,14 +653,14 @@ async def reviews(
     cur = await conn.execute(
         f"""
         SELECT r.review_id, r.booking_id, r.rating, r.title, r.body, r.status,
-               r.created_at, r.moderated_at, g.full_name AS guest_name,
+               r.review_type, r.created_at, r.moderated_at, g.full_name AS guest_name,
                b.checkin_date, b.checkout_date, rm.room_number, rt.name AS room_type,
                u.full_name AS moderated_by_name
         FROM reviews r
         JOIN guests g ON g.guest_id = r.guest_id
-        JOIN bookings b ON b.booking_id = r.booking_id
-        JOIN rooms rm ON rm.room_id = b.room_id
-        JOIN room_types rt ON rt.room_type_id = rm.room_type_id
+        LEFT JOIN bookings b ON b.booking_id = r.booking_id
+        LEFT JOIN rooms rm ON rm.room_id = b.room_id
+        LEFT JOIN room_types rt ON rt.room_type_id = rm.room_type_id
         LEFT JOIN users u ON u.user_id = r.moderated_by
         {where}
         ORDER BY r.status = 'PENDING' DESC, r.created_at DESC
@@ -727,9 +727,10 @@ async def create_backup(
 async def download_backup(
     user: dict = Depends(require_permission("backup:manage")),
 ):
+    result = await asyncio.to_thread(ensure_valid_backup)
+    if result.get("status") != "success":
+        raise HTTPException(status_code=500, detail=result.get("error") or "Не удалось создать резервную копию")
     path = backup_path()
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Резервная копия ещё не создана")
     return FileResponse(path, filename=path.name, media_type="application/octet-stream")
 
 
@@ -738,11 +739,10 @@ async def restore_backup(
     user: dict = Depends(require_permission("backup:manage")),
 ):
     settings = get_settings()
+    result = await asyncio.to_thread(ensure_valid_backup)
+    if result.get("status") != "success":
+        raise HTTPException(status_code=500, detail=result.get("error") or "Не удалось создать резервную копию")
     path = backup_path()
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Резервная копия не найдена")
-    if path.stat().st_size == 0:
-        raise HTTPException(status_code=400, detail="Резервная копия пустая — создайте её заново")
     result = await asyncio.to_thread(
         subprocess.run,
         [
@@ -896,11 +896,10 @@ def _with_db(url: str, name: str) -> str:
 
 @router.post("/backups/verify")
 async def verify_backup(user: dict = Depends(require_permission("backup:manage"))):
+    ensured = await asyncio.to_thread(ensure_valid_backup)
+    if ensured.get("status") != "success":
+        raise HTTPException(status_code=500, detail=ensured.get("error") or "Не удалось создать резервную копию")
     path = backup_path()
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Резервная копия не найдена")
-    if path.stat().st_size == 0:
-        raise HTTPException(status_code=400, detail="Резервная копия пустая — создайте её заново")
     checksum = hashlib.sha256(path.read_bytes()).hexdigest()
     result = await asyncio.to_thread(
         subprocess.run,
@@ -921,11 +920,10 @@ async def verify_backup(user: dict = Depends(require_permission("backup:manage")
 
 @router.post("/backups/test-restore")
 async def test_restore(user: dict = Depends(require_permission("backup:manage"))):
+    ensured = await asyncio.to_thread(ensure_valid_backup)
+    if ensured.get("status") != "success":
+        raise HTTPException(status_code=500, detail=ensured.get("error") or "Не удалось создать резервную копию")
     path = backup_path()
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Резервная копия не найдена")
-    if path.stat().st_size == 0:
-        raise HTTPException(status_code=400, detail="Резервная копия пустая — создайте её заново")
     settings = get_settings()
     admin_url = settings.database_admin_url
     temp_db = "hotel_restore_check"

@@ -339,7 +339,7 @@ function UsersTable({ mode }: { mode: "admin" | "employees" }) {
       {!query.isLoading && !query.isError && (
         <div className="table-wrap">
           <table className="table-base">
-            <thead><tr><th>Сотрудник</th><th>Роль</th><th>Контакты</th><th>Статус</th><th>Последняя активность</th><th /></tr></thead>
+            <thead><tr><th>Сотрудник</th><th>Роль</th><th>Контакты</th><th>Статус</th><th>2FA</th><th>Последняя активность</th><th /></tr></thead>
             <tbody>
               {items.map((userRow: any) => (
                 <tr key={userRow.user_id}>
@@ -363,6 +363,7 @@ function UsersTable({ mode }: { mode: "admin" | "employees" }) {
                       <Badge tone="neutral">Не в сети</Badge>
                     )}
                   </td>
+                  <td><span className={userRow.totp_enabled ? "text-success" : "text-muted"}>{userRow.totp_enabled ? "✓" : "✗"}</span></td>
                   <td>{userRow.last_seen_at ? formatDateTime(userRow.last_seen_at) : "—"}</td>
                   <td className="text-right">
                     <div className="flex justify-end gap-1">

@@ -14,7 +14,7 @@ from ..crypto import document_fields, hash_value, normalize_document, normalize_
 from ..db import get_db
 from ..deps import require_permission
 from ..events import publish, subscribe, unsubscribe
-from ..notifications import notify_guest, notify_guest_by_booking
+from ..notifications import notify_guest, notify_guest_by_booking, notify_user
 from ..schemas import (
     ChangeBookingRequest,
     CheckInRequest,
@@ -989,6 +989,27 @@ async def update_waitlist(
     row = await cur.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Запись листа ожидания не найдена")
+
+    if payload.status == "NOTIFIED":
+        wcur = await conn.execute(
+            "SELECT email, checkin_date, checkout_date FROM waitlist_entries WHERE waitlist_id = %s",
+            (waitlist_id,),
+        )
+        entry = await wcur.fetchone()
+        if entry and entry["email"]:
+            ucur = await conn.execute(
+                "SELECT user_id FROM users WHERE lower(email) = lower(%s) LIMIT 1",
+                (entry["email"],),
+            )
+            account = await ucur.fetchone()
+            if account:
+                title = "Номер освободился"
+                body = (
+                    f"Заявка листа ожидания на {entry['checkin_date']} — {entry['checkout_date']} "
+                    "обработана. Менеджер свяжется с вами для бронирования."
+                )
+                await notify_user(conn, account["user_id"], "WAITLIST", title, body, "/me/bookings")
+
     return dict(row)
 
 

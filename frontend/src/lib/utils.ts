@@ -138,10 +138,10 @@ export type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";
 
 export function statusTone(status?: string | null): StatusTone {
   if (!status) return "neutral";
-  if (["CONFIRMED", "CHECKED_IN", "DONE", "ЧИСТЫЙ_ГОТОВ", "СВОБОДЕН"].includes(status)) return "success";
-  if (["NEW", "ASSIGNED", "OPEN", "В_УБОРКЕ", "ОЖИДАЕТ"].includes(status)) return "warning";
-  if (["CANCELLED", "NO_SHOW", "БЛОКИРОВАН", "ГРЯЗНЫЙ"].includes(status)) return "danger";
-  if (["IN_PROGRESS", "ЗАБРОНИРОВАН", "ЗАСЕЛЁН", "CHECKED_OUT"].includes(status)) return "info";
+  if (["CONFIRMED", "CHECKED_IN", "DONE", "ЧИСТЫЙ_ГОТОВ", "ГОТОВ"].includes(status)) return "success";
+  if (["NEW", "ASSIGNED", "OPEN", "В_УБОРКЕ", "ГРЯЗНЫЙ", "ОЖИДАЕТ", "ЗАБРОНИРОВАН"].includes(status)) return "warning";
+  if (["CANCELLED", "NO_SHOW", "СВОБОДЕН", "ТРЕБУЕТ УБОРКИ"].includes(status)) return "danger";
+  if (["IN_PROGRESS", "ЗАСЕЛЁН", "CHECKED_OUT"].includes(status)) return "info";
   return "neutral";
 }
 
@@ -153,6 +153,18 @@ export function statusClass(status?: string | null) {
     danger: "bg-rose-500/12 text-rose-700 dark:text-rose-300",
     info: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
     neutral: "bg-surface2 text-muted",
+  };
+  return map[tone];
+}
+
+export function statusTextClass(status?: string | null) {
+  const tone = statusTone(status);
+  const map: Record<StatusTone, string> = {
+    success: "text-emerald-700 dark:text-emerald-300",
+    warning: "text-amber-700 dark:text-amber-300",
+    danger: "text-rose-700 dark:text-rose-300",
+    info: "text-sky-700 dark:text-sky-300",
+    neutral: "text-muted",
   };
   return map[tone];
 }
