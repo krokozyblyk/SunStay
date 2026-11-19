@@ -1,0 +1,239 @@
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/500.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
+@import "@fontsource/playfair-display/500.css";
+@import "@fontsource/playfair-display/600.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: #f7f3ec;
+  --surface: #ffffff;
+  --surface-2: #fbf8f3;
+  --ink: #1e2420;
+  --muted: #6e746d;
+  --forest: #123b36;
+  --forest-dark: #0e2f2b;
+  --terracotta: #c96f4a;
+  --amber: #e3a857;
+  --sage: #9db5a4;
+  --success: #2f7d5d;
+  --warning: #c58a2e;
+  --danger: #b8504e;
+  --info: #3d6f8e;
+  --border: #e6ded2;
+  --table-header: #f3eee6;
+  --row-hover: #fbf8f3;
+  --input-bg: #ffffff;
+
+  --canvas-rgb: 247 243 236;
+  --surface-rgb: 255 255 255;
+  --surface2-rgb: 251 248 243;
+  --ink-rgb: 30 36 32;
+  --muted-rgb: 110 116 109;
+  --forest-rgb: 18 59 54;
+  --forestDark-rgb: 14 47 43;
+  --terracotta-rgb: 201 111 74;
+  --amber-rgb: 227 168 87;
+  --sage-rgb: 157 181 164;
+  --success-rgb: 47 125 93;
+  --warning-rgb: 197 138 46;
+  --danger-rgb: 184 80 78;
+  --info-rgb: 61 111 142;
+  --border-rgb: 230 222 210;
+  --tableHeader-rgb: 243 238 230;
+  --rowHover-rgb: 251 248 243;
+  --inputBg-rgb: 255 255 255;
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: #0e1311;
+  --surface: #151c18;
+  --surface-2: #1b241f;
+  --ink: #f3efe7;
+  --muted: #a7b0a8;
+  --forest: #0a1f1b;
+  --forest-dark: #071714;
+  --terracotta: #d9825e;
+  --amber: #e0a24a;
+  --sage: #8faf9b;
+  --success: #4caf82;
+  --warning: #e0a24a;
+  --danger: #d46a67;
+  --info: #6fa3c2;
+  --border: #2a342e;
+  --table-header: #1b241f;
+  --row-hover: #1f2a24;
+  --input-bg: #121915;
+
+  --canvas-rgb: 14 19 17;
+  --surface-rgb: 21 28 24;
+  --surface2-rgb: 27 36 31;
+  --ink-rgb: 243 239 231;
+  --muted-rgb: 167 176 168;
+  --forest-rgb: 10 31 27;
+  --forestDark-rgb: 7 23 20;
+  --terracotta-rgb: 217 130 94;
+  --amber-rgb: 224 162 74;
+  --sage-rgb: 143 175 155;
+  --success-rgb: 76 175 130;
+  --warning-rgb: 224 162 74;
+  --danger-rgb: 212 106 103;
+  --info-rgb: 111 163 194;
+  --border-rgb: 42 52 46;
+  --tableHeader-rgb: 27 36 31;
+  --rowHover-rgb: 31 42 36;
+  --inputBg-rgb: 18 25 21;
+  color-scheme: dark;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    background-image:
+      radial-gradient(circle at 85% -10%, rgba(201, 111, 74, 0.08), transparent 34rem),
+      radial-gradient(circle at 10% 0%, rgba(157, 181, 164, 0.12), transparent 30rem);
+  }
+
+  ::selection {
+    @apply bg-terracotta/25;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-line;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-soft;
+  }
+
+  .card-soft {
+    @apply rounded-2xl border border-line bg-surface2;
+  }
+
+  .page-title {
+    @apply font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl;
+  }
+
+  .page-subtitle {
+    @apply mt-1 text-sm leading-6 text-muted;
+  }
+
+  .btn {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-terracotta/40 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-forest text-white hover:bg-forestDark active:scale-[0.98];
+  }
+
+  .dark .btn-primary {
+    @apply bg-terracotta text-[#1a120e] hover:bg-[#e29270];
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-surface text-ink hover:bg-surface2;
+  }
+
+  .btn-ghost {
+    @apply btn text-muted hover:bg-surface2 hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger text-white hover:opacity-90;
+  }
+
+  .btn-sm {
+    @apply min-h-8 rounded-lg px-3 py-1.5 text-xs;
+  }
+
+  .input {
+    @apply h-10 w-full rounded-xl border border-line bg-inputBg px-3 text-sm text-ink placeholder:text-muted/70 focus:border-terracotta focus:outline-none focus:ring-2 focus:ring-terracotta/20;
+  }
+
+  .textarea {
+    @apply min-h-24 w-full rounded-xl border border-line bg-inputBg px-3 py-2 text-sm text-ink placeholder:text-muted/70 focus:border-terracotta focus:outline-none focus:ring-2 focus:ring-terracotta/20;
+  }
+
+  .label {
+    @apply text-[11px] font-bold uppercase tracking-[0.08em] text-muted;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold;
+  }
+
+  .status-pill::before {
+    content: "";
+    @apply h-1.5 w-1.5 rounded-full bg-current;
+  }
+
+  .table-wrap {
+    @apply overflow-x-auto rounded-2xl border border-line bg-surface;
+  }
+
+  .table-base {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .table-base thead {
+    @apply bg-tableHeader text-[11px] uppercase tracking-[0.08em] text-muted;
+  }
+
+  .table-base th {
+    @apply whitespace-nowrap px-4 py-3 font-bold;
+  }
+
+  .table-base td {
+    @apply border-t border-line px-4 py-3 align-middle;
+  }
+
+  .table-base tbody tr:hover {
+    @apply bg-rowHover;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/70 transition-all duration-150 hover:bg-white/10 hover:text-white;
+  }
+
+  .sidebar-link.active {
+    @apply bg-white text-forest shadow-sm;
+  }
+
+  .dark .sidebar-link.active {
+    @apply bg-surface2 text-ink;
+  }
+
+  .kpi-value {
+    @apply font-display text-3xl font-semibold tabular-nums text-ink;
+  }
+
+  .divider {
+    @apply h-px w-full bg-line;
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:ring-offset-2 focus:ring-offset-canvas;
+  }
+}

@@ -1,0 +1,84 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sunstay_db
+    environment:
+      POSTGRES_DB: hotel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: Europe/Moscow
+    ports:
+      - "5432:5432"
+    volumes:
+      - sunstay_pgdata:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hotel"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: ./backend
+    container_name: sunstay_api
+    environment:
+      DATABASE_URL: postgresql://sunstay_app:sunstay_app@db:5432/hotel
+      DATABASE_ADMIN_URL: postgresql://postgres:postgres@db:5432/hotel
+      ANALYTICS_DATABASE_URL: postgresql://sunstay_analytics:sunstay_analytics@db:5432/hotel
+      JWT_SECRET: sunstay-dev-secret-change-in-production
+      DATA_ENCRYPTION_KEY: bh9O5gpBkH-qPkJSoUkiWswjQyQqWcQ7ZHZU6BO_C9s=
+      JWT_ALGORITHM: HS256
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8080,http://localhost
+      BACKUP_DIR: /backups
+      TZ: Europe/Moscow
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: ./analytics
+    container_name: sunstay_analytics
+    environment:
+      ANALYTICS_DATABASE_URL: postgresql://sunstay_analytics:sunstay_analytics@db:5432/hotel
+      JWT_SECRET: sunstay-dev-secret-change-in-production
+      DATA_ENCRYPTION_KEY: bh9O5gpBkH-qPkJSoUkiWswjQyQqWcQ7ZHZU6BO_C9s=
+      JWT_ALGORITHM: HS256
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8080,http://localhost
+      TZ: Europe/Moscow
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+    container_name: sunstay_web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+      - analytics
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:4
+    container_name: sunstay_adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  sunstay_pgdata:

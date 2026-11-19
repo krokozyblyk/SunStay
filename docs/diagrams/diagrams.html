@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>SunStay — схемы</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Playfair+Display:wght@600&display=swap");
+    body {
+      margin: 0;
+      padding: 28px;
+      background: #e9e4da;
+      font-family: Manrope, sans-serif;
+      color: #1e2420;
+    }
+    .sheet {
+      width: 1360px;
+      margin: 0 auto 28px;
+      background: #f7f3ec;
+      border: 1px solid #e6ded2;
+      border-radius: 24px;
+      padding: 28px 32px 32px;
+      box-sizing: border-box;
+    }
+    h1 { margin: 0 0 8px; font-family: "Playfair Display", serif; font-size: 32px; color: #123b36; }
+    p { margin: 0 0 20px; color: #6e746d; font-size: 14px; }
+    .mermaid { display: flex; justify-content: center; }
+    .pyramid {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 0 4px;
+    }
+    .layer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border-radius: 10px;
+      height: 58px;
+      box-shadow: 0 8px 18px rgba(18,59,54,0.12);
+    }
+    .l1 { width: 260px; background: #123b36; }
+    .l2 { width: 470px; background: #2f6b5e; }
+    .l3 { width: 680px; background: #9db5a4; color: #123b36; }
+    .l4 { width: 890px; background: #e3a857; color: #2a1800; }
+    .l5 { width: 1100px; background: #c96f4a; }
+    .legend { margin-top: 14px; display: flex; justify-content: center; gap: 22px; font-size: 12px; color: #6e746d; }
+  </style>
+</head>
+<body>
+  <section class="sheet" id="architecture">
+    <h1>Архитектура SunStay</h1>
+    <p>Клиент-серверная система: React SPA, Nginx, два FastAPI-сервиса и PostgreSQL.</p>
+    <pre class="mermaid">
+flowchart LR
+  U["Гость / сотрудник"] --> W["React SPA"]
+  W --> N["Nginx<br/>статика + proxy"]
+  N --> A["FastAPI Core<br/>:8000"]
+  N --> R["FastAPI Analytics<br/>:8001"]
+  A --> DB[("PostgreSQL 16")]
+  R --> DB
+  A --> B["Резервные копии<br/>/backups"]
+  A --> AD["Adminer :8081"]
+    </pre>
+  </section>
+
+  <section class="sheet" id="usecase">
+    <h1>Диаграмма прецедентов SunStay</h1>
+    <p>Пять ролей и их основные сценарии взаимодействия с системой.</p>
+    <pre class="mermaid">
+flowchart LR
+  Guest(("Гость"))
+  Manager(("Менеджер"))
+  Housekeeping(("Хаускипинг"))
+  HotelManager(("Управляющий<br/>отелем"))
+  DBA(("Администратор<br/>БД"))
+
+  subgraph SunStay["SunStay"]
+    direction TB
+    UC1(["Поиск доступности"])
+    UC2(["Бронирование и оплата"])
+    UC3(["Мои брони и счета"])
+    UC4(["Заказ услуг"])
+    UC5(["Отмена брони"])
+    UC6(["Подтверждение / отмена"])
+    UC7(["Заселение / выселение"])
+    UC8(["Folio и платежи"])
+    UC9(["Ночной аудит"])
+    UC10(["Шахматка и отчёты"])
+    UC11(["Задания хаускипинга"])
+    UC12(["Статусы номеров"])
+    UC13(["Расходники"])
+    UC14(["Заявки на ремонт"])
+    UC15(["Тарифы, услуги, номера"])
+    UC16(["Сотрудники и аудит"])
+    UC17(["Пользователи и роли"])
+    UC18(["Справочники"])
+    UC19(["Бэкапы и мониторинг"])
+    UC20(["Настройки"])
+  end
+
+  classDef actor fill:#123B36,color:#ffffff,stroke:#123B36,font-weight:700;
+  classDef uc fill:#ffffff,color:#1E2420,stroke:#C96F4A,stroke-width:1.5px;
+  class Guest,Manager,Housekeeping,HotelManager,DBA actor;
+  class UC1,UC2,UC3,UC4,UC5,UC6,UC7,UC8,UC9,UC10,UC11,UC12,UC13,UC14,UC15,UC16,UC17,UC18,UC19,UC20 uc;
+
+  Guest --> UC1
+  Guest --> UC2
+  Guest --> UC3
+  Guest --> UC4
+  Guest --> UC5
+  Manager --> UC6
+  Manager --> UC7
+  Manager --> UC8
+  Manager --> UC9
+  Manager --> UC10
+  Manager --> UC11
+  Housekeeping --> UC11
+  Housekeeping --> UC12
+  Housekeeping --> UC13
+  Housekeeping --> UC14
+  HotelManager --> UC10
+  HotelManager --> UC15
+  HotelManager --> UC16
+  HotelManager --> UC6
+  DBA --> UC17
+  DBA --> UC18
+  DBA --> UC19
+  DBA --> UC20
+    </pre>
+  </section>
+
+  <section class="sheet" id="erd">
+    <h1>Концептуальная ER-диаграмма</h1>
+    <p>Основные сущности и связи. Полная даталогическая модель — в hotel_sunstay_erd.drawio.</p>
+    <pre class="mermaid">
+erDiagram
+  GUESTS ||--o{ BOOKINGS : "создаёт"
+  ROOMS ||--o{ BOOKINGS : "назначается"
+  ROOM_TYPES ||--o{ ROOMS : "классифицирует"
+  RATE_PLANS ||--o{ BOOKINGS : "тарифицирует"
+  PROMO_CODES ||--o{ BOOKINGS : "скидка"
+  BOOKINGS ||--o{ SERVICE_ORDERS : "заказывает"
+  SERVICES ||--o{ SERVICE_ORDERS : "включает"
+  BOOKINGS ||--o| FOLIOS : "открывает"
+  FOLIOS ||--o{ FOLIO_LINES : "содержит"
+  FOLIOS ||--o{ PAYMENTS : "принимает"
+  PAYMENTS ||--o{ REFUNDS : "возвращает"
+  ROOMS ||--o{ HOUSEKEEPING_TASKS : "убирается"
+  HOUSEKEEPING_TASKS ||--o{ CONSUMABLE_USAGE : "списывает"
+  CONSUMABLES ||--o{ CONSUMABLE_USAGE : "расходуется"
+  ROOMS ||--o{ MAINTENANCE_REQUESTS : "ремонтируется"
+  USERS ||--o{ BOOKINGS : "оформляет"
+  USERS ||--o{ AUDIT_LOG : "пишет"
+    </pre>
+  </section>
+
+  <section class="sheet" id="uimap">
+    <h1>Карта интерфейсов и ролей</h1>
+    <p>Публичная часть и закрытые рабочие области по ролям.</p>
+    <pre class="mermaid">
+flowchart TB
+  P["Публичный сайт<br/>лендинг, поиск, бронь, оплата"] --> L["Вход / регистрация"]
+  L --> G["Кабинет гостя<br/>брони, счета, услуги, профиль"]
+  L --> M["Менеджер<br/>дашборд, шахматка, брони, folio, отчёты"]
+  L --> H["Хаускипинг<br/>задания, заявки, расходники"]
+  L --> HM["Управляющий отелем<br/>отчёты, справочники, сотрудники, аудит"]
+  L --> DBA["Администратор БД<br/>пользователи, права, бэкапы, мониторинг"]
+    </pre>
+  </section>
+
+  <section class="sheet" id="testpyramid">
+    <h1>Схема тестирования</h1>
+    <p>Пирамида тестов: от быстрых SQL/API-проверок к нагрузочным и приёмочным сценариям.</p>
+    <div class="pyramid">
+      <div class="layer l1">E2E и приёмочные сценарии</div>
+      <div class="layer l2">Нагрузочные и security-тесты</div>
+      <div class="layer l3">Интеграционные тесты API + БД</div>
+      <div class="layer l4">Функциональные тесты API</div>
+      <div class="layer l5">SQL-тесты процедур, триггеров и ограничений</div>
+    </div>
+    <div class="legend">
+      <span>SQL-тесты: 10 проверок</span>
+      <span>API-тесты: 8</span>
+      <span>Нагрузка: 300 запросов</span>
+      <span>Restore: тестовая БД</span>
+    </div>
+  </section>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#ffffff",
+        primaryTextColor: "#1e2420",
+        primaryBorderColor: "#123b36",
+        lineColor: "#c96f4a",
+        secondaryColor: "#fbf8f3",
+        tertiaryColor: "#9db5a4",
+        fontFamily: "Manrope, sans-serif",
+        fontSize: "14px"
+      },
+      flowchart: { curve: "basis", nodeSpacing: 50, rankSpacing: 60 },
+      er: { entityPadding: 16, minEntityWidth: 110, minEntityHeight: 40, fontSize: 13 }
+    });
+  </script>
+</body>
+</html>

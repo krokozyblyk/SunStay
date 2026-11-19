@@ -1,0 +1,211 @@
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+
+export type Lang = "ru" | "en";
+
+const DICT: Record<Lang, Record<string, string>> = {
+  ru: {
+    dashboard: "Дашборд",
+    roomGrid: "Шахматка",
+    bookings: "Бронирования",
+    folios: "Folio и платежи",
+    reports: "Отчёты",
+    housekeeping: "Хаускипинг",
+    maintenance: "Техзаявки",
+    consumables: "Расходники",
+    users: "Пользователи и роли",
+    directories: "Справочники",
+    audit: "Аудит",
+    backups: "Бэкапы",
+    settings: "Настройки",
+    employees: "Сотрудники",
+    guestHome: "Главная",
+    guestBookings: "Мои брони",
+    guestServices: "Услуги",
+    guestInvoices: "Счета",
+    guestProfile: "Профиль",
+    login: "Войти",
+    logout: "Выйти",
+    register: "Зарегистрироваться",
+    book: "Забронировать",
+    search: "Поиск",
+    apply: "Применить",
+    reset: "Сбросить",
+    save: "Сохранить",
+    cancel: "Отмена",
+    close: "Закрыть",
+    edit: "Редактировать",
+    delete: "Удалить",
+    add: "Добавить",
+    details: "Подробнее",
+    choose: "Выбрать",
+    exportCsv: "Экспорт CSV",
+    exportPng: "Экспорт PNG",
+    downloadPdf: "Скачать PDF",
+    confirm: "Подтвердить",
+    checkIn: "Заселить",
+    checkOut: "Выселить",
+    move: "Перенести",
+    openFolio: "Открыть folio",
+    addPayment: "Добавить платёж",
+    refund: "Возврат",
+    closeFolio: "Закрыть счёт",
+    importCsv: "Импорт CSV",
+    createBackup: "Создать копию",
+    restore: "Восстановить",
+    newBooking: "Новая бронь",
+    newTask: "Новое задание",
+    newRequest: "Новая заявка",
+    writeOff: "Списать",
+    start: "Начать",
+    complete: "Завершить",
+    theme: "Тема",
+    light: "Светлая",
+    dark: "Тёмная",
+    system: "Системная",
+    language: "Язык",
+    profile: "Профиль",
+    dateFormat: "Формат даты",
+    numberFormat: "Формат чисел",
+    pageSize: "Размер страницы",
+    savedFilters: "Сохранённые фильтры",
+    hotkeys: "Горячие клавиши",
+    saveFilter: "Сохранить фильтр",
+    all: "Все",
+    status: "Статус",
+    actions: "Действия",
+    guest: "Гость",
+    room: "Номер",
+    dates: "Даты",
+    total: "Сумма",
+    balance: "Баланс",
+    charged: "Начислено",
+    paid: "Оплачено",
+    source: "Источник",
+    nights: "ночей",
+    loading: "Загрузка…",
+    noData: "Нет данных",
+    error: "Ошибка",
+  },
+  en: {
+    dashboard: "Dashboard",
+    roomGrid: "Room grid",
+    bookings: "Bookings",
+    folios: "Folio & payments",
+    reports: "Reports",
+    housekeeping: "Housekeeping",
+    maintenance: "Maintenance",
+    consumables: "Consumables",
+    users: "Users & roles",
+    directories: "Directories",
+    audit: "Audit",
+    backups: "Backups",
+    settings: "Settings",
+    employees: "Employees",
+    guestHome: "Home",
+    guestBookings: "My bookings",
+    guestServices: "Services",
+    guestInvoices: "Invoices",
+    guestProfile: "Profile",
+    login: "Sign in",
+    logout: "Sign out",
+    register: "Sign up",
+    book: "Book",
+    search: "Search",
+    apply: "Apply",
+    reset: "Reset",
+    save: "Save",
+    cancel: "Cancel",
+    close: "Close",
+    edit: "Edit",
+    delete: "Delete",
+    add: "Add",
+    details: "Details",
+    choose: "Choose",
+    exportCsv: "Export CSV",
+    exportPng: "Export PNG",
+    downloadPdf: "Download PDF",
+    confirm: "Confirm",
+    checkIn: "Check in",
+    checkOut: "Check out",
+    move: "Move",
+    openFolio: "Open folio",
+    addPayment: "Add payment",
+    refund: "Refund",
+    closeFolio: "Close folio",
+    importCsv: "Import CSV",
+    createBackup: "Create backup",
+    restore: "Restore",
+    newBooking: "New booking",
+    newTask: "New task",
+    newRequest: "New request",
+    writeOff: "Write off",
+    start: "Start",
+    complete: "Complete",
+    theme: "Theme",
+    light: "Light",
+    dark: "Dark",
+    system: "System",
+    language: "Language",
+    profile: "Profile",
+    dateFormat: "Date format",
+    numberFormat: "Number format",
+    pageSize: "Page size",
+    savedFilters: "Saved filters",
+    hotkeys: "Hotkeys",
+    saveFilter: "Save filter",
+    all: "All",
+    status: "Status",
+    actions: "Actions",
+    guest: "Guest",
+    room: "Room",
+    dates: "Dates",
+    total: "Total",
+    balance: "Balance",
+    charged: "Charged",
+    paid: "Paid",
+    source: "Source",
+    nights: "nights",
+    loading: "Loading…",
+    noData: "No data",
+    error: "Error",
+  },
+};
+
+type I18nContextValue = {
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+  toggleLang: () => void;
+  t: (key: string) => string;
+};
+
+const I18nContext = createContext<I18nContextValue | null>(null);
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(() => {
+    const saved = localStorage.getItem("sunstay_lang") as Lang | null;
+    return saved ?? "ru";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sunstay_lang", lang);
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  const value = useMemo<I18nContextValue>(
+    () => ({
+      lang,
+      setLang: setLangState,
+      toggleLang: () => setLangState(lang === "ru" ? "en" : "ru"),
+      t: (key: string) => DICT[lang][key] ?? DICT.ru[key] ?? key,
+    }),
+    [lang],
+  );
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n() {
+  const context = useContext(I18nContext);
+  if (!context) throw new Error("useI18n must be used inside I18nProvider");
+  return context;
+}

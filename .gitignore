@@ -1,0 +1,41 @@
+# Environment
+.env
+backend/.env
+analytics/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backups
+backups/*.dump
+backups/*.backup
+backups/*.sql.gz
+
+# Logs / temp
+*.log
+*.bkp
+*.tmp
+docs/pz_preview*.png
+.tmp/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Deployment secrets
+.env.deploy
+.env.production
+
