@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from psycopg import AsyncConnection
 from psycopg.types.json import Jsonb
 
 from ..audit import write_audit_event
-from ..crypto import document_fields, phone_fields
+from ..crypto import document_fields, hash_value, phone_fields
 from ..db import get_db
-from ..deps import get_optional_user
+from ..deps import get_current_user, get_optional_user
 from ..notifications import notify_guest_by_booking, notify_permission
 from ..schemas import PublicBookingCreate, WaitlistCreate
 from ..utils import get_booking, row_to_dict, rows_to_dicts
@@ -681,3 +681,47 @@ async def public_room(room_id: int, conn: AsyncConnection = Depends(get_db)):
     )
     result["reviews"] = rows_to_dicts(await reviews_cur.fetchall())
     return result
+
+@router.post("/hotel-reviews")
+async def create_hotel_review(
+    request: Request,
+    payload: dict = Body(...),
+    user: dict = Depends(get_current_user),
+    conn: AsyncConnection = Depends(get_db),
+):
+    """Any registered user can publish a hotel review immediately."""
+    rating = int(payload.get("rating") or 0)
+    body = str(payload.get("body") or "").strip()
+    title = payload.get("title") or None
+    if rating < 1 or rating > 5:
+        raise HTTPException(status_code=400, detail="Оценка должна быть от 1 до 5")
+    if len(body) < 10 or len(body) > 2000:
+        raise HTTPException(status_code=400, detail="Отзыв должен быть от 10 до 2000 символов")
+
+    cur = await conn.execute(
+        "SELECT guest_id FROM guests WHERE user_id = %s LIMIT 1", (user["user_id"],)
+    )
+    guest_row = await cur.fetchone()
+    if guest_row:
+        guest_id = guest_row["guest_id"]
+    else:
+        doc = f"ACC-{user['user_id']}"
+        cur = await conn.execute(
+            """
+            INSERT INTO guests (full_name, document_number, document_number_hash, email, pdn_consent, user_id)
+            VALUES (%s, %s, %s, %s, TRUE, %s)
+            RETURNING guest_id
+            """,
+            (user["full_name"], doc, hash_value(doc), user["email"], user["user_id"]),
+        )
+        guest_id = (await cur.fetchone())["guest_id"]
+
+    cur = await conn.execute(
+        """
+        INSERT INTO reviews (guest_id, rating, title, body, status, review_type)
+        VALUES (%s, %s, %s, %s, 'APPROVED', 'HOTEL')
+        RETURNING review_id, status, created_at
+        """,
+        (guest_id, rating, title, body),
+    )
+    return dict(await cur.fetchone())

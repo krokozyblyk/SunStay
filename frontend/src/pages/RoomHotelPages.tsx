@@ -137,13 +137,7 @@ export function RoomPage() {
 }
 
 export function HotelPage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const features = useFeatures();
-  const [rating, setRating] = useState(5);
-  const [reviewTitle, setReviewTitle] = useState("");
-  const [reviewBody, setReviewBody] = useState("");
   const reviewsQuery = useQuery({
     queryKey: ["public-reviews"],
     queryFn: () => api.get("/public/reviews", { params: { limit: 12 } }).then((response) => response.data),
@@ -151,15 +145,6 @@ export function HotelPage() {
   const roomTypesQuery = useQuery({
     queryKey: ["public-room-types"],
     queryFn: () => api.get("/public/room-types").then((response) => response.data),
-  });
-  const reviewMutation = useMutation({
-    mutationFn: () => api.post("/guest/reviews", { rating, title: reviewTitle || null, body: reviewBody }).then((response) => response.data),
-    onSuccess: () => {
-      toast("Спасибо! Отзыв опубликован.", "success");
-      setReviewTitle(""); setReviewBody(""); setRating(5);
-      queryClient.invalidateQueries({ queryKey: ["public-reviews"] });
-    },
-    onError: (error) => toast(getErrorMessage(error), "error"),
   });
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 md:px-6">
@@ -193,22 +178,46 @@ export function HotelPage() {
             </div>
           ) : <p className="mt-3 text-sm text-muted">Отзывов пока нет.</p>}
         </Card>
-        {features.reviews && (
-          <Card className="space-y-3">
-            <h2 className="font-display text-2xl font-semibold">Оставить отзыв</h2>
-            {user?.role_code === "GUEST" ? (
-              <>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" onClick={() => setRating(value)}><Star size={24} className={value <= rating ? "fill-amber text-amber" : "text-muted/40"} /></button>)}
-                </div>
-                <Input label="Заголовок" value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} />
-                <Textarea label="Отзыв" value={reviewBody} onChange={(event) => setReviewBody(event.target.value)} rows={5} />
-                <Button onClick={() => reviewMutation.mutate()} disabled={reviewMutation.isPending || reviewBody.trim().length < 10}>Опубликовать</Button>
-              </>
-            ) : <p className="text-sm text-muted">Войдите как гость, чтобы оставить отзыв.</p>}
-          </Card>
-        )}
+        <Card className="space-y-3">
+          <h2 className="font-display text-2xl font-semibold">Оставить отзыв</h2>
+          <HotelReviewForm />
+        </Card>
       </div>
+    </div>
+  );
+}
+
+export function HotelReviewForm() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const features = useFeatures();
+  const [rating, setRating] = useState(5);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const mutation = useMutation({
+    mutationFn: () => api.post("/public/hotel-reviews", { rating, title: title || null, body }).then((response) => response.data),
+    onSuccess: () => {
+      toast("Спасибо! Отзыв опубликован.", "success");
+      setTitle(""); setBody(""); setRating(5);
+      queryClient.invalidateQueries({ queryKey: ["public-reviews"] });
+    },
+    onError: (error) => toast(getErrorMessage(error), "error"),
+  });
+  if (!features.reviews) return <p className="text-sm text-muted">Отзывы временно недоступны.</p>;
+  if (!user) return <p className="text-sm text-muted">Войдите в аккаунт, чтобы оставить отзыв.</p>;
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((value) => (
+          <button key={value} type="button" onClick={() => setRating(value)} aria-label={`Оценка ${value}`}>
+            <Star size={24} className={value <= rating ? "fill-amber text-amber" : "text-muted/40"} />
+          </button>
+        ))}
+      </div>
+      <Input label="Заголовок" value={title} onChange={(event) => setTitle(event.target.value)} />
+      <Textarea label="Отзыв" value={body} onChange={(event) => setBody(event.target.value)} rows={5} placeholder="Расскажите о вашем пребывании в SunStay…" />
+      <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || body.trim().length < 10}>Опубликовать</Button>
     </div>
   );
 }

@@ -22,6 +22,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { HotelReviewForm } from "./RoomHotelPages";
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, getErrorMessage } from "../lib/api";
@@ -864,6 +865,11 @@ export function ConfirmationPage() {
           {user && user.role_code !== "GUEST" && <Link to="/app/bookings" className="btn-primary">К бронированиям</Link>}
           <Link to="/" className="btn-secondary">На главную</Link>
         </div>
+      </Card>
+      <Card className="mt-5 space-y-3">
+        <h2 className="font-display text-2xl font-semibold text-ink">Отзыв об отеле</h2>
+        <p className="text-sm text-muted">Поделитесь впечатлениями о SunStay — отзыв увидят все посетители сайта.</p>
+        <HotelReviewForm />
       </Card>
     </div>
   );
