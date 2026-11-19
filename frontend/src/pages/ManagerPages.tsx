@@ -1002,7 +1002,7 @@ export function FolioPaymentsPage() {
 
   const actionMutation = useMutation({
     mutationFn: async ({ action, payload }: { action: string; payload?: any }) => {
-      if (action === "payment") return api.post(`/manager/folios/${folioId}/payments`, payload);
+      if (action === "payment") return api.post(`/manager/folios/${folioId}/payments`, payload, { headers: { "Idempotency-Key": crypto.randomUUID() } });
       if (action === "refund") return api.post(`/manager/payments/${payload.payment_id}/refunds`, payload);
       if (action === "close") return api.post(`/manager/folios/${folioId}/close`);
       return Promise.resolve();

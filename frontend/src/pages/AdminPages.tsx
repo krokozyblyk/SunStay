@@ -49,7 +49,7 @@ import { formatDate, formatDateTime, formatMoney, formatNumber, ROLE_LABELS, sta
 type DirectoryField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "date" | "textarea" | "select";
+  type?: "text" | "number" | "date" | "textarea" | "select" | "image";
   options?: Array<{ value: string | number; label: string }>;
   required?: boolean;
 };
@@ -71,7 +71,7 @@ const DIRECTORY_CONFIG: Record<string, { label: string; fields: DirectoryField[]
       { key: "name", label: "Название", required: true },
       { key: "capacity", label: "Вместимость", type: "number", required: true },
       { key: "description", label: "Описание", type: "textarea" },
-      { key: "image_url", label: "Ссылка на фото" },
+      { key: "image_url", label: "Фото (ссылка или файл)", type: "image" },
     ],
   },
   rooms: {
@@ -105,7 +105,7 @@ const DIRECTORY_CONFIG: Record<string, { label: string; fields: DirectoryField[]
       { key: "unit_id", label: "Единица", type: "select", required: true },
       { key: "name", label: "Название", required: true },
       { key: "price", label: "Цена", type: "number", required: true },
-      { key: "image_url", label: "Ссылка на фото" },
+      { key: "image_url", label: "Фото (ссылка или файл)", type: "image" },
     ],
   },
   "promo-codes": {
@@ -704,6 +704,26 @@ function DirectoryPageContent() {
             }
             if (field.type === "textarea") {
               return <Textarea key={field.key} label={field.label} value={form[field.key] ?? ""} onChange={(event) => setForm({ ...form, [field.key]: event.target.value })} />;
+            }
+            if (field.type === "image") {
+              return (
+                <div key={field.key} className="space-y-2">
+                  <Input label={field.label} value={form[field.key] ?? ""} onChange={(event) => setForm({ ...form, [field.key]: event.target.value })} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="input py-2"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => setForm((current) => ({ ...current, [field.key]: String(reader.result) }));
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  {String(form[field.key] ?? "").startsWith("data:image") && <img src={String(form[field.key])} alt="Превью" className="h-24 w-full rounded-xl object-cover" />}
+                </div>
+              );
             }
             return <Input key={field.key} label={field.label} type={field.type ?? "text"} value={form[field.key] ?? ""} onChange={(event) => setForm({ ...form, [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value })} />;
           })}

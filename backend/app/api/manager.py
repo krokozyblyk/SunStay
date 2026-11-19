@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from psycopg import AsyncConnection
+from psycopg.types.json import Jsonb
 
 from ..audit import write_audit_event
 from ..crypto import document_fields, hash_value, normalize_document, normalize_phone, phone_fields
@@ -785,6 +786,16 @@ async def add_payment(
     user: dict = Depends(require_permission("payments:create")),
     conn: AsyncConnection = Depends(get_db),
 ):
+    idempotency_key = request.headers.get("idempotency-key")
+    if idempotency_key:
+        cur = await conn.execute(
+            "SELECT response FROM idempotency_keys WHERE key = %s AND endpoint = 'manager.payments'",
+            (idempotency_key,),
+        )
+        existing = await cur.fetchone()
+        if existing and existing["response"]:
+            return existing["response"]
+
     cur = await conn.execute(
         "SELECT fn_record_payment(%s::integer, %s::numeric, %s::varchar, %s::varchar, %s::integer, %s::varchar) AS payment_id",
         (
@@ -796,7 +807,17 @@ async def add_payment(
             request.client.host if request.client else "",
         ),
     )
-    return {"payment_id": (await cur.fetchone())["payment_id"]}
+    result = {"payment_id": (await cur.fetchone())["payment_id"]}
+    if idempotency_key:
+        await conn.execute(
+            """
+            INSERT INTO idempotency_keys (key, user_id, endpoint, response)
+            VALUES (%s, %s, 'manager.payments', %s)
+            ON CONFLICT (key) DO NOTHING
+            """,
+            (idempotency_key, user["user_id"], Jsonb(result)),
+        )
+    return result
 
 
 @router.post("/payments/{payment_id}/refunds")

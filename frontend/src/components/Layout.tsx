@@ -34,6 +34,7 @@ import { useTheme } from "../lib/theme";
 import { CurrencySelect } from "../lib/currency";
 import { api, getErrorMessage } from "../lib/api";
 import { useRealtime } from "../lib/realtime";
+import { useFeatures } from "../lib/features";
 import { cn, formatDate, formatDateTime, ROLE_LABELS, statusLabel } from "../lib/utils";
 import { Avatar, Button, EmptyState, Input, Modal, Spinner } from "./ui";
 
@@ -314,7 +315,7 @@ function GlobalSearch() {
 
 type NavItem = { to: string; label: string; icon: ReactNode; end?: boolean };
 
-function navForRole(role: string, t: (key: string) => string): Array<{ group: string; items: NavItem[] }> {
+function navForRole(role: string, t: (key: string) => string, loyaltyEnabled = true): Array<{ group: string; items: NavItem[] }> {
   const dashboard = { to: "/app", label: t("dashboard"), icon: <LayoutDashboard size={18} />, end: true };
   const grid = { to: "/app/room-grid", label: t("roomGrid"), icon: <Grid3X3 size={18} /> };
   const bookings = { to: "/app/bookings", label: t("bookings"), icon: <CalendarDays size={18} /> };
@@ -343,7 +344,7 @@ function navForRole(role: string, t: (key: string) => string): Array<{ group: st
           { to: "/me/bookings", label: t("guestBookings"), icon: <CalendarDays size={18} /> },
           { to: "/me/services", label: t("guestServices"), icon: <Sparkles size={18} /> },
           { to: "/me/invoices", label: t("guestInvoices"), icon: <ReceiptText size={18} /> },
-          { to: "/me/loyalty", label: "Бонусы", icon: <Sparkles size={18} /> },
+          ...(loyaltyEnabled ? [{ to: "/me/loyalty", label: "Бонусы", icon: <Sparkles size={18} /> }] : []),
           { to: "/me/profile", label: t("guestProfile"), icon: <UserRound size={18} /> },
         ],
       },
@@ -430,7 +431,8 @@ export function AppShell() {
 
   const isStaff = user?.role_code !== "GUEST";
   useRealtime(isStaff);
-  const groups = useMemo(() => navForRole(user?.role_code ?? "MANAGER", t), [user?.role_code, t]);
+  const features = useFeatures();
+  const groups = useMemo(() => navForRole(user?.role_code ?? "MANAGER", t, features.loyalty), [user?.role_code, t, features.loyalty]);
   const currentTitle = useMemo(() => {
     const all = groups.flatMap((group) => group.items);
     const match = all.find((item) => (item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)));
