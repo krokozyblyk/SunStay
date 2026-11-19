@@ -41,7 +41,6 @@ export function RoomPage() {
     queryKey: ["public-room-types"],
     queryFn: () => api.get("/public/room-types").then((response) => response.data),
   });
-  if (query.isLoading) return <div className="mx-auto max-w-6xl px-4 py-16"><Spinner /></div>;
   const fallbackRoom = {
     room_id: Number(id),
     room_number: params.get("room_number") || "",
@@ -56,7 +55,9 @@ export function RoomPage() {
     amenities: [],
     reviews: [],
   };
-  const room = query.data ?? fallbackRoom;
+  const hasParams = Boolean(params.get("room_number"));
+  const room = query.data ?? (hasParams ? fallbackRoom : null);
+  if (!room) return <div className="mx-auto max-w-6xl px-4 py-16"><Spinner /></div>;
   const gallery = Array.from(new Set([
     room.image_url,
     roomImageByName(room.room_type),
