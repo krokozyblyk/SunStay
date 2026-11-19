@@ -53,3 +53,28 @@ async def notify_guest_by_booking(
         body,
         f"/me/bookings/{booking['booking_id']}",
     )
+
+
+async def notify_permission(
+    conn: AsyncConnection,
+    permission: str,
+    notification_type: str,
+    title: str,
+    body: str | None = None,
+    link: str | None = None,
+) -> int:
+    cur = await conn.execute(
+        """
+        SELECT DISTINCT u.user_id
+        FROM users u
+        JOIN role_permissions rp ON rp.role_id = u.role_id
+        JOIN permissions p ON p.permission_id = rp.permission_id
+        WHERE p.code = %s AND u.is_active
+        """,
+        (permission,),
+    )
+    count = 0
+    for row in await cur.fetchall():
+        await notify_user(conn, row["user_id"], notification_type, title, body, link)
+        count += 1
+    return count

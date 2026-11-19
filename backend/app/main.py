@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg import AsyncConnection
 
-from .api import admin, auth, guest, housekeeping, imports, manager, public, reports
+from .api import admin, auth, guest, housekeeping, imports, manager, notifications, public, reports
 from .config import get_settings
 from .db import close_pool, get_db, init_pool
 from .migrations import encrypt_sensitive_data
@@ -58,6 +58,7 @@ app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(auth.settings_router, prefix=settings.api_prefix)
 app.include_router(public.router, prefix=settings.api_prefix)
 app.include_router(guest.router, prefix=settings.api_prefix)
+app.include_router(notifications.router, prefix=settings.api_prefix)
 app.include_router(manager.router, prefix=settings.api_prefix)
 app.include_router(housekeeping.router, prefix=settings.api_prefix)
 app.include_router(admin.router, prefix=settings.api_prefix)

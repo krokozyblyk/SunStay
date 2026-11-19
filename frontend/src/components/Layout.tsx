@@ -167,25 +167,27 @@ export function PublicLayout() {
 }
 
 function NotificationBell() {
+  const { user } = useAuth();
+  const base = user?.role_code === "GUEST" ? "/guest/notifications" : "/notifications";
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const countQuery = useQuery({
-    queryKey: ["guest-notifications-count"],
-    queryFn: () => api.get("/guest/notifications/unread-count").then((response) => response.data),
+    queryKey: ["notifications-count", base],
+    queryFn: () => api.get(`${base}/unread-count`).then((response) => response.data),
     refetchInterval: 30000,
   });
   const listQuery = useQuery({
     queryKey: ["guest-notifications"],
-    queryFn: () => api.get("/guest/notifications").then((response) => response.data),
+    queryFn: () => api.get(base).then((response) => response.data),
     enabled: open,
   });
   const readMutation = useMutation({
-    mutationFn: (id: number) => api.post(`/guest/notifications/${id}/read`),
+    mutationFn: (id: number) => api.post(`${base}/${id}/read`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["guest-notifications"] }),
     onError: (error) => getErrorMessage(error),
   });
   const readAllMutation = useMutation({
-    mutationFn: () => api.post("/guest/notifications/read-all"),
+    mutationFn: () => api.post(`${base}/read-all`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["guest-notifications"] }),
   });
 
@@ -562,7 +564,7 @@ export function AppShell() {
               <CircleHelp size={17} />
             </button>
             {isStaff && <GlobalSearch />}
-            {user.role_code === "GUEST" && <NotificationBell />}
+            <NotificationBell />
             <LanguageToggle compact />
             <ThemeToggle compact />
             <div className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-2.5 py-1.5 sm:flex">

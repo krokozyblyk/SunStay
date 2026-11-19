@@ -9,7 +9,7 @@ from ..audit import write_audit_event
 from ..crypto import document_fields, phone_fields
 from ..db import get_db
 from ..deps import get_optional_user
-from ..notifications import notify_guest_by_booking
+from ..notifications import notify_guest_by_booking, notify_permission
 from ..schemas import PublicBookingCreate, WaitlistCreate
 from ..utils import get_booking, row_to_dict, rows_to_dicts
 
@@ -569,5 +569,13 @@ async def create_public_booking(
         "BOOKING_CREATED",
         "Бронь создана",
         f"Ваша бронь #{booking_id} создана. Заезд {booking['checkin_date']}.",
+    )
+    await notify_permission(
+        conn,
+        "bookings:update",
+        "NEW_BOOKING",
+        "Новая бронь",
+        f"Бронь #{booking_id}: {booking.get('guest_name', '')}, заезд {booking['checkin_date']}.",
+        "/app/bookings",
     )
     return booking
