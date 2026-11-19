@@ -75,6 +75,8 @@ function ReviewStars({ rating }: { rating: number }) {
 
 function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checkout: string) => void }) {
   const { format } = useCurrency();
+  const { lang } = useI18n();
+  const en = lang === "en";
   const [month, setMonth] = useState(todayISO().slice(0, 7));
   const query = useQuery({
     queryKey: ["public-calendar", month],
@@ -84,7 +86,7 @@ function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checko
   const first = new Date(`${month}-01T12:00:00`);
   const offset = (first.getDay() + 6) % 7;
   const cells: Array<any | null> = [...Array(offset).fill(null), ...days];
-  const monthTitle = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(first);
+  const monthTitle = new Intl.DateTimeFormat(en ? "en-US" : "ru-RU", { month: "long", year: "numeric" }).format(first);
 
   function changeMonth(delta: number) {
     const date = new Date(`${month}-01T12:00:00`);
@@ -96,7 +98,7 @@ function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checko
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="label text-terracotta">Календарь доступности</p>
+          <p className="label text-terracotta">{en ? "Availability calendar" : "Календарь доступности"}</p>
           <h3 className="mt-1 font-display text-2xl font-semibold capitalize text-ink">{monthTitle}</h3>
         </div>
         <div className="flex gap-2">
@@ -105,7 +107,7 @@ function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checko
         </div>
       </div>
       <div className="mt-5 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted">
-        {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => <span key={day} className="py-1">{day}</span>)}
+        {(en ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]).map((day) => <span key={day} className="py-1">{day}</span>)}
       </div>
       <div className="mt-1 grid grid-cols-7 gap-1">
         {cells.map((day, index) => {
@@ -121,13 +123,13 @@ function AvailabilityCalendar({ onSelect }: { onSelect: (checkin: string, checko
                   ? "cursor-not-allowed border-line/50 bg-surface2/50 text-muted/50"
                   : "border-line bg-surface hover:border-terracotta hover:bg-terracotta/8"
               }`}
-              title={disabled ? "Нет свободных номеров" : "Выбрать эту дату"}
+              title={disabled ? (en ? "No rooms available" : "Нет свободных номеров") : (en ? "Select this date" : "Выбрать эту дату")}
             >
               <span className="text-xs font-bold">{Number(day.day.slice(-2))}</span>
               {!disabled && (
                 <>
                   <span className="mt-1 block text-[10px] font-semibold text-ink">{format(day.min_price)}</span>
-                  <span className="block text-[9px] text-muted">{day.available_rooms} св.</span>
+                  <span className="block text-[9px] text-muted">{day.available_rooms} {en ? "free" : "св."}</span>
                 </>
               )}
             </button>
