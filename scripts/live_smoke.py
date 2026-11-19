@@ -110,4 +110,23 @@ if status in (200, 201) and wl.get("waitlist_id"):
     found = any(n.get("notification_type") == "WAITLIST" for n in (notes if isinstance(notes, list) else []))
     check("guest got WAITLIST notification", status == 200 and found, str(notes)[:300])
 
+    # Convert a fresh waitlist entry into a booking
+    status, wl2 = req("POST", "/public/waitlist", {
+        "full_name": "Convert Smoke", "email": "guest.demo@sunstay.example",
+        "phone": "+7 900 111-22-33", "room_type_id": 1,
+        "checkin_date": "2026-12-20", "checkout_date": "2026-12-22",
+        "adults": 2, "children": 0, "note": "convert smoke",
+    }, headers=guest)
+    if status in (200, 201) and wl2.get("waitlist_id"):
+        status, rooms = req("GET", "/public/availability?checkin=2026-12-20&checkout=2026-12-22&guests=2")
+        room = rooms[0]["rooms"][0] if rooms and rooms[0].get("rooms") else None
+        status, rates = req("GET", "/manager/rates", headers=manager)
+        rate = next((r for r in rates if r["room_type_id"] == 1), None) if isinstance(rates, list) else None
+        if room and rate:
+            status, conv = req("POST", f"/manager/waitlist/{wl2['waitlist_id']}/convert", {
+                "room_id": room["room_id"], "rate_id": rate["rate_id"],
+                "document_number": "9988776655",
+            }, headers=manager)
+            check("waitlist convert to booking", status == 200 and conv.get("booking_id"), f"{status} {str(conv)[:200]}")
+
 print("LIVE SMOKE DONE", flush=True)
