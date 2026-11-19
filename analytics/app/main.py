@@ -13,9 +13,12 @@ from fastapi.responses import StreamingResponse
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
-DATABASE_URL = __import__("os").getenv(
-    "ANALYTICS_DATABASE_URL",
-    "postgresql://sunstay_analytics:sunstay_analytics@localhost:5432/hotel",
+import os
+
+DATABASE_URL = (
+    os.getenv("ANALYTICS_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or "postgresql://sunstay_analytics:sunstay_analytics@localhost:5432/hotel"
 )
 JWT_SECRET = __import__("os").getenv("JWT_SECRET", "change-me-in-production")
 JWT_ALGORITHM = __import__("os").getenv("JWT_ALGORITHM", "HS256")

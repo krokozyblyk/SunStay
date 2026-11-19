@@ -33,6 +33,11 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: sunstay-api
+          envVarKey: JWT_SECRET
       - key: CORS_ORIGINS
         value: https://krokozyblyk.github.io
       - key: TZ
