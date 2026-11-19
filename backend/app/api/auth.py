@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 import secrets
 import uuid
 
@@ -9,6 +10,8 @@ import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request
 from psycopg import AsyncConnection
 from psycopg.types.json import Jsonb
+
+logger = logging.getLogger("sunstay.auth")
 
 from ..audit import write_audit_event
 from ..crypto import document_fields, encrypt_value, phone_fields
@@ -70,6 +73,7 @@ async def fetch_user_by_email(conn: AsyncConnection, email: str) -> dict | None:
         SELECT
             u.user_id, u.role_id, r.name AS role_name, u.full_name, u.email, u.phone,
             u.password_hash, u.is_active, u.failed_login_attempts, u.totp_enabled,
+            (u.totp_secret_enc IS NOT NULL) AS has_totp_secret,
             (u.locked_until IS NOT NULL AND u.locked_until > now()) AS is_locked,
             CASE
                 WHEN u.locked_until IS NOT NULL AND u.locked_until > now()
@@ -275,6 +279,19 @@ async def login(payload: LoginRequest, request: Request, conn: AsyncConnection =
                 headers={"Retry-After": "30"},
             )
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
+
+    if user["totp_enabled"] and not user.get("has_totp_secret"):
+        # Self-heal inconsistent state: 2FA was "enabled" but the secret was
+        # removed (e.g. after a manual unlink). Never lock the user out asking
+        # for a code that can never be verified.
+        await conn.execute(
+            """
+            UPDATE users SET totp_enabled = FALSE, totp_setup_requested = FALSE
+            WHERE user_id = %s
+            """,
+            (user["user_id"],),
+        )
+        logger.warning("2FA flag repaired for user %s (enabled without secret)", user["user_id"])
 
     if user["totp_enabled"]:
         return {
