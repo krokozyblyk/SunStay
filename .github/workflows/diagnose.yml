@@ -1,0 +1,17 @@
+name: Diagnose SunStay API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check health
+        run: curl -sS --max-time 90 -w "\nHTTP %{http_code}\n" https://sunstay-api.onrender.com/api/health || true
+      - name: Check room detail endpoint (new backend)
+        run: curl -sS --max-time 90 -w "\nHTTP %{http_code}\n" https://sunstay-api.onrender.com/api/public/rooms/9 || true
+      - name: Check 2FA status requires auth (new backend)
+        run: curl -sS --max-time 90 -w "\nHTTP %{http_code}\n" https://sunstay-api.onrender.com/api/auth/2fa/status || true
+      - name: Check public config
+        run: curl -sS --max-time 90 -w "\nHTTP %{http_code}\n" https://sunstay-api.onrender.com/api/public/config || true
