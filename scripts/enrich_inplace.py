@@ -327,6 +327,11 @@ def enrich_v(doc: Document, s: int, e: int):
             el = t._tbl
             if el in children and i0 <= children.index(el) < i1:
                 el.getparent().remove(el)
+        # remove empty headings left over from the old separate test tables
+        stale = ["Тестовые сценарии бронирования", "Тестовые сценарии ролей"]
+        for pp in list(doc.paragraphs):
+            if text_of(pp) in stale and pp.style.name == h2s:
+                pp._element.getparent().remove(pp._element)
 
         anchor = next((p for p in doc.paragraphs
                        if text_of(p).startswith("6. Тестовые примеры") and p.style.name == h2s), None)
