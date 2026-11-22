@@ -128,52 +128,69 @@ def set_update_fields(doc):
     el.set(qn("w:val"), "true")
 
 
+def add_toc_styles(doc):
+    """Create TOC styles identical in appearance to the previous course project."""
+    for name, size in (("toc 1", 14), ("toc 2", 14), ("toc 3", 14)):
+        try:
+            style = doc.styles[name]
+        except KeyError:
+            from docx.enum.style import WD_STYLE_TYPE
+            style = doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+        style.font.name = "Times New Roman"
+        style.font.size = Pt(size)
+        style.font.color.rgb = None
+        style.paragraph_format.first_line_indent = Cm(0)
+        style.paragraph_format.space_after = Pt(0)
+        style.paragraph_format.line_spacing_rule = 0
+    return doc
+
+
 def add_static_toc(doc):
-    """A visible, working contents list with internal hyperlinks."""
+    """Contents list in the same plain style as the previous course project."""
     entries = [
-        "ВВЕДЕНИЕ",
-        "1. ОБЩАЯ ЧАСТЬ",
-        "1.1. Цель разработки",
-        "1.2. Средства разработки",
-        "1.3. Требования к оформлению",
-        "2. СПЕЦИАЛЬНАЯ ЧАСТЬ",
-        "2.1. Постановка задачи",
-        "2.2. Внешняя спецификация",
-        "2.3. Проектирование",
-        "2.4. Результат работы программы",
-        "3. ТЕХНОЛОГИЧЕСКАЯ ЧАСТЬ",
-        "3.1. Инструментальные средства",
-        "3.3. Защитное программирование",
-        "3.4. Характеристики программы",
-        "ЗАКЛЮЧЕНИЕ",
-        "СПИСОК ИСПОЛЬЗОВАННЫХ МАТЕРИАЛОВ",
-        "ПРИЛОЖЕНИЯ",
-        "Приложение Б. Текст программы",
-        "Приложение В. Сценарий и результаты тестовых испытаний",
-        "Приложение Г. Руководство пользователя",
-        "Приложение Д. Скрипт базы данных",
+        ("ВВЕДЕНИЕ", "6", 1),
+        ("1. ОБЩАЯ ЧАСТЬ", "7", 1),
+        ("1.1. Цель разработки", "7", 2),
+        ("1.2. Средства разработки", "8", 2),
+        ("1.3. Требования к оформлению", "9", 2),
+        ("2. СПЕЦИАЛЬНАЯ ЧАСТЬ", "10", 1),
+        ("2.1. Постановка задачи", "10", 2),
+        ("2.1.1. Входные данные", "10", 3),
+        ("2.1.2. Выходные данные", "10", 3),
+        ("2.1.3. Требования к проекту", "11", 3),
+        ("2.2. Внешняя спецификация", "14", 2),
+        ("2.2.1. Описание задачи", "14", 3),
+        ("2.2.2. Входные и выходные данные", "15", 3),
+        ("2.2.3. Методы", "16", 3),
+        ("2.2.4. Тесты", "19", 3),
+        ("2.2.5. Контроль целостности данных", "20", 3),
+        ("2.3. Проектирование", "23", 2),
+        ("2.3.1. Схема архитектуры приложения", "23", 3),
+        ("2.3.2. Логическая схема данных", "24", 3),
+        ("2.3.3. Физическая схема данных", "24", 3),
+        ("2.3.4. Структурная схема", "25", 3),
+        ("2.3.5. Функциональная схема", "26", 3),
+        ("2.3.6. Схема тестирования", "27", 3),
+        ("2.3.7. Схема пользовательского интерфейса", "27", 3),
+        ("2.4. Результат работы программы", "30", 2),
+        ("3. ТЕХНОЛОГИЧЕСКАЯ ЧАСТЬ", "32", 1),
+        ("3.1. Инструментальные средства", "32", 2),
+        ("3.3. Защитное программирование", "38", 2),
+        ("3.4. Характеристики программы", "42", 2),
+        ("ЗАКЛЮЧЕНИЕ", "44", 1),
+        ("СПИСОК ИСПОЛЬЗОВАННЫХ МАТЕРИАЛОВ", "47", 1),
+        ("Приложение Б. Текст программы", "1", 1),
+        ("Приложение В. Сценарий и результаты тестовых испытаний", "1", 1),
+        ("Приложение Г. Руководство пользователя", "1", 1),
+        ("Приложение Д. Скрипт базы данных", "1", 1),
     ]
-    for text in entries:
-        para = doc.add_paragraph()
+    add_toc_styles(doc)
+    for text, page, level in entries:
+        para = doc.add_paragraph(style=f"toc {level}")
         para.paragraph_format.first_line_indent = Cm(0)
-        para.paragraph_format.space_after = Pt(2)
-        name, _ = toc_id(text)
-        hyperlink = OxmlElement("w:hyperlink")
-        hyperlink.set(qn("w:anchor"), name)
-        run = OxmlElement("w:r")
-        r_pr = OxmlElement("w:rPr")
-        color = OxmlElement("w:color")
-        color.set(qn("w:val"), "0563C1")
-        r_pr.append(color)
-        u = OxmlElement("w:u")
-        u.set(qn("w:val"), "single")
-        r_pr.append(u)
-        run.append(r_pr)
-        t = OxmlElement("w:t")
-        t.text = text
-        run.append(t)
-        hyperlink.append(run)
-        para._p.append(hyperlink)
+        para.paragraph_format.space_after = Pt(0)
+        run = para.add_run(text + "\t" + page)
+        B.set_run_font(run, 14)
 
 
 def code_block(doc, text):
@@ -205,10 +222,7 @@ def build_main(out=OUT_MAIN, with_title=True, with_appendices=True):
     if with_title:
         doc.add_page_break()
 
-    title = doc.add_paragraph()
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title.paragraph_format.first_line_indent = Cm(0)
-    B.set_run_font(title.add_run("СОДЕРЖАНИЕ"), 16, bold=True)
+    h1(doc, "СОДЕРЖАНИЕ")
     add_static_toc(doc)
     set_update_fields(doc)
     doc.add_page_break()
