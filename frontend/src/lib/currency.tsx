@@ -69,7 +69,7 @@ export function CurrencySelect() {
     <select
       value={currency}
       onChange={(event) => setCurrency(event.target.value as Currency)}
-      className="h-9 rounded-xl border border-line bg-surface px-2 text-xs font-semibold text-muted outline-none focus:border-terracotta"
+      className="no-arrow h-9 rounded-xl border border-line bg-surface px-2 pr-2 text-xs font-semibold text-muted outline-none focus:border-terracotta"
       title="Валюта отображения"
     >
       <option value="RUB">RUB</option>

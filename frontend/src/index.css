@@ -314,3 +314,9 @@ select {
   color: var(--badge-color);
   border: 1px solid color-mix(in srgb, var(--badge-color) 30%, transparent);
 }
+
+/* Selects that should not show the dropdown arrow (currency switcher) */
+select.no-arrow {
+  background-image: none;
+  padding-right: 0.5rem;
+}

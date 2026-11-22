@@ -300,6 +300,15 @@ async def block_user(
     if not reason:
         raise HTTPException(status_code=400, detail="Укажите причину блокировки")
 
+    cur = await conn.execute(
+        "SELECT role_id FROM users WHERE user_id = %s", (user_id,)
+    )
+    target = await cur.fetchone()
+    if not target:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if target["role_id"] == 5:
+        raise HTTPException(status_code=403, detail="Нельзя отозвать доступ администратора БД")
+
     await conn.execute(
         """
         UPDATE users
@@ -362,6 +371,14 @@ async def assign_role(
     user: dict = Depends(require_permission("users:assign_roles")),
     conn: AsyncConnection = Depends(get_db),
 ):
+    cur = await conn.execute(
+        "SELECT role_id FROM users WHERE user_id = %s", (user_id,)
+    )
+    target = await cur.fetchone()
+    if not target:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if target["role_id"] == 5:
+        raise HTTPException(status_code=403, detail="Нельзя изменить роль администратора БД")
     await conn.execute("UPDATE users SET role_id = %s WHERE user_id = %s", (payload.role_id, user_id))
     return {"ok": True}
 

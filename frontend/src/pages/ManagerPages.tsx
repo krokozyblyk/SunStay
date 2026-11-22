@@ -875,7 +875,7 @@ export function BookingDetailPage() {
             <Button variant="secondary" onClick={() => setNotifyOpen(true)}>Уведомить гостя</Button>
             {booking.status === "NEW" && <Button onClick={() => actionMutation.mutate({ action: "confirm" })}><Check size={15} /> Подтвердить</Button>}
             {canCheckIn && <Button onClick={() => setCheckInOpen(true)}><LogIn size={15} /> Заселить</Button>}
-            {canCheckOut && <Button onClick={() => setCheckOutOpen(true)}><LogOut size={15} /> Выселить</Button>}
+            {canCheckOut && <Button onClick={() => { setCheckOutForm((current) => ({ ...current, payment_amount: Number(folio?.balance ?? 0) })); setCheckOutOpen(true); }}><LogOut size={15} /> Выселить</Button>}
             {canCancel && <Button variant="danger" onClick={() => setCancelOpen(true)}><X size={15} /> Отменить</Button>}
           </>
         }
@@ -936,7 +936,7 @@ export function BookingDetailPage() {
             <Button variant="secondary" className="w-full" onClick={() => setHoldOpen(true)}>Изменить удержание</Button>
             {folio && <Button variant="secondary" className="w-full" onClick={() => navigate(`/app/folios?folio=${folio.folio_id}`)}><ReceiptText size={15} /> Открыть folio</Button>}
             {canCheckIn && <Button className="w-full" onClick={() => setCheckInOpen(true)}><LogIn size={15} /> Заселить</Button>}
-            {canCheckOut && <Button className="w-full" onClick={() => setCheckOutOpen(true)}><LogOut size={15} /> Выселить</Button>}
+            {canCheckOut && <Button className="w-full" onClick={() => { setCheckOutForm((current) => ({ ...current, payment_amount: Number(folio?.balance ?? 0) })); setCheckOutOpen(true); }}><LogOut size={15} /> Выселить</Button>}
           </Card>
           {folio && (
             <Card>
@@ -978,7 +978,11 @@ export function BookingDetailPage() {
 
       <Modal open={checkOutOpen} title="Выселение гостя" subtitle="Финальный платёж и закрытие folio." onClose={() => setCheckOutOpen(false)} footer={<><Button variant="secondary" onClick={() => setCheckOutOpen(false)}>Отмена</Button><Button onClick={() => actionMutation.mutate({ action: "check-out", payload: checkOutForm })} disabled={actionMutation.isPending}>Подтвердить выселение</Button></>}>
         <div className="space-y-3">
-          <Input label="Сумма к оплате" type="number" value={checkOutForm.payment_amount} onChange={(event) => setCheckOutForm({ ...checkOutForm, payment_amount: Number(event.target.value) })} />
+          <div className="rounded-xl border border-line bg-surface2 p-3">
+            <p className="label">Сумма к оплате (рассчитана автоматически)</p>
+            <p className="mt-1 font-display text-3xl font-semibold text-ink">{formatMoney(folio?.balance ?? 0)}</p>
+            <p className="mt-1 text-xs text-muted">Включены все начисления и услуги по счёту. Изменить сумму вручную нельзя.</p>
+          </div>
           <Select label="Способ оплаты" value={checkOutForm.payment_method} onChange={(event) => setCheckOutForm({ ...checkOutForm, payment_method: event.target.value })}>
             <option value="CARD">Карта</option><option value="CASH">Наличные</option><option value="BANK_TRANSFER">Банковский перевод</option><option value="ONLINE">Онлайн</option>
           </Select>
@@ -1162,7 +1166,7 @@ export function FolioPaymentsPage() {
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => folioId && downloadFile(api, `/manager/folios/${folioId}/pdf`, `folio-${folioId}.pdf`)}><Download size={14} /> PDF</Button>
             <Button variant="secondary" size="sm" onClick={() => setRefundOpen(true)}>Возврат</Button>
-            <Button variant="secondary" size="sm" onClick={() => setPaymentOpen(true)}>Платёж</Button>
+            <Button variant="secondary" size="sm" onClick={() => { setPaymentForm((current) => ({ ...current, amount: Number(detailQuery.data?.folio?.balance ?? 0) })); setPaymentOpen(true); }}>Платёж</Button>
             <Button size="sm" onClick={() => actionMutation.mutate({ action: "close" })}>Закрыть счёт</Button>
           </div>
         }
@@ -1211,7 +1215,11 @@ export function FolioPaymentsPage() {
 
       <Modal open={paymentOpen} title="Добавить платёж" onClose={() => setPaymentOpen(false)} footer={<><Button variant="secondary" onClick={() => setPaymentOpen(false)}>Отмена</Button><Button onClick={() => actionMutation.mutate({ action: "payment", payload: paymentForm })} disabled={actionMutation.isPending}>Сохранить</Button></>}>
         <div className="space-y-3">
-          <Input label="Сумма" type="number" value={paymentForm.amount} onChange={(event) => setPaymentForm({ ...paymentForm, amount: Number(event.target.value) })} />
+          <div className="rounded-xl border border-line bg-surface2 p-3">
+            <p className="label">Сумма платежа (баланс счёта)</p>
+            <p className="mt-1 font-display text-3xl font-semibold text-ink">{formatMoney(paymentForm.amount)}</p>
+            <p className="mt-1 text-xs text-muted">Рассчитана автоматически по начислениям и услугам.</p>
+          </div>
           <Select label="Способ" value={paymentForm.method} onChange={(event) => setPaymentForm({ ...paymentForm, method: event.target.value })}>
             <option value="CARD">Карта</option><option value="CASH">Наличные</option><option value="BANK_TRANSFER">Банковский перевод</option><option value="ONLINE">Онлайн</option>
           </Select>
@@ -1273,9 +1281,11 @@ export function WaitlistPage() {
     queryKey: ["waitlist", status, search],
     queryFn: () => api.get("/manager/waitlist", { params: { status: status || undefined, search: search || undefined } }).then((response) => response.data),
   });
+  const [cancelEntry, setCancelEntry] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState("Нет свободных номеров");
   const mutation = useMutation({
-    mutationFn: ({ id, nextStatus }: { id: number; nextStatus: string }) =>
-      api.patch(`/manager/waitlist/${id}`, { status: nextStatus }),
+    mutationFn: ({ id, nextStatus, note }: { id: number; nextStatus: string; note?: string }) =>
+      api.patch(`/manager/waitlist/${id}`, { status: nextStatus, note }),
     onSuccess: () => {
       toast("Лист ожидания обновлён", "success");
       queryClient.invalidateQueries({ queryKey: ["waitlist"] });
@@ -1360,7 +1370,7 @@ export function WaitlistPage() {
               <div className="flex flex-wrap gap-2">
                 {row.status === "WAITING" && <Button size="sm" variant="secondary" onClick={() => mutation.mutate({ id: row.waitlist_id, nextStatus: "NOTIFIED" })} disabled={mutation.isPending}>Уведомить</Button>}
                 {["WAITING", "NOTIFIED"].includes(row.status) && <Button size="sm" onClick={() => { setConvertEntry(row); setConvertForm({ room_id: "", rate_id: "", document_number: "" }); }}><Check size={14} /> Создать бронь</Button>}
-                {["WAITING", "NOTIFIED"].includes(row.status) && <Button size="sm" variant="ghost" onClick={() => mutation.mutate({ id: row.waitlist_id, nextStatus: "CANCELLED" })} disabled={mutation.isPending}><X size={14} /> Отменить</Button>}
+                {["WAITING", "NOTIFIED"].includes(row.status) && <Button size="sm" variant="ghost" onClick={() => { setCancelEntry(row); setCancelReason("Нет свободных номеров"); }} disabled={mutation.isPending}><X size={14} /> Отказать</Button>}
               </div>
             </div>
           </Card>
@@ -1384,6 +1394,21 @@ export function WaitlistPage() {
           </Select>
           <Input label="Документ гостя" numeric value={convertForm.document_number} onChange={(event) => setConvertForm({ ...convertForm, document_number: event.target.value })} placeholder="4510123456" />
           <p className="text-xs text-muted">Гость: {convertEntry?.guest_name} · {formatDate(convertEntry?.checkin_date)} — {formatDate(convertEntry?.checkout_date)}</p>
+        </div>
+      </Modal>
+      <Modal open={Boolean(cancelEntry)} title="Отказ в листе ожидания" subtitle={cancelEntry ? `${cancelEntry.guest_name} · ${formatDate(cancelEntry.checkin_date)} — ${formatDate(cancelEntry.checkout_date)}` : ""} onClose={() => setCancelEntry(null)} footer={<><Button variant="secondary" onClick={() => setCancelEntry(null)}>Отмена</Button><Button variant="danger" onClick={() => {
+        if (cancelEntry) mutation.mutate({ id: cancelEntry.waitlist_id, nextStatus: "CANCELLED", note: `Причина отказа: ${cancelReason}` });
+        setCancelEntry(null);
+      }} disabled={mutation.isPending}>Отказать</Button></>}>
+        <div className="space-y-3">
+          <Select label="Причина отказа" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)}>
+            <option>Нет свободных номеров</option>
+            <option>Гость отказался</option>
+            <option>Даты больше не подходят</option>
+            <option>Не подтверждены контактные данные</option>
+            <option>Другое</option>
+          </Select>
+          <p className="text-xs text-muted">Причина будет сохранена в заявке и видна менеджерам.</p>
         </div>
       </Modal>
     </div>

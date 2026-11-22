@@ -78,3 +78,27 @@ async def notify_permission(
         await notify_user(conn, row["user_id"], notification_type, title, body, link)
         count += 1
     return count
+
+async def notify_roles(
+    conn: AsyncConnection,
+    role_names: list[str],
+    notification_type: str,
+    title: str,
+    body: str | None = None,
+    link: str | None = None,
+) -> int:
+    """Notify only users with the given role names (e.g. managers only)."""
+    count = 0
+    for role_name in role_names:
+        cur = await conn.execute(
+            """
+            SELECT u.user_id
+            FROM users u JOIN roles r ON r.role_id = u.role_id
+            WHERE r.name = %s AND u.is_active
+            """,
+            (role_name,),
+        )
+        for row in await cur.fetchall():
+            await notify_user(conn, row["user_id"], notification_type, title, body, link)
+            count += 1
+    return count

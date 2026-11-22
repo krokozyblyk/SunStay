@@ -5,6 +5,7 @@ from psycopg import AsyncConnection
 
 from ..db import get_db
 from ..deps import require_permission
+from ..notifications import notify_user
 from ..schemas import (
     ConsumableWriteOff,
     HousekeepingTaskCreate,
@@ -76,7 +77,17 @@ async def create_task(
             request.client.host if request.client else "",
         ),
     )
-    return {"task_id": (await cur.fetchone())["task_id"]}
+    task_id = (await cur.fetchone())["task_id"]
+    if payload.staff_id:
+        await notify_user(
+            conn,
+            payload.staff_id,
+            "TASK_ASSIGNED",
+            "Новое задание",
+            f"Вам назначено задание #{task_id} в номере. Откройте доску хаускипинга.",
+            "/app/housekeeping",
+        )
+    return {"task_id": task_id}
 
 
 @router.post("/tasks/{task_id}/start")

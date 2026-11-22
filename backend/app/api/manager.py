@@ -868,6 +868,19 @@ async def refund_payment(
     conn: AsyncConnection = Depends(get_db),
 ):
     cur = await conn.execute(
+        """
+        SELECT f.status FROM payments p
+        JOIN folios f ON f.folio_id = p.folio_id
+        WHERE p.payment_id = %s
+        """,
+        (payment_id,),
+    )
+    payment_row = await cur.fetchone()
+    if not payment_row:
+        raise HTTPException(status_code=404, detail="Платёж не найден")
+    if payment_row["status"] == "CLOSED":
+        raise HTTPException(status_code=400, detail="Счёт уже закрыт — возврат невозможен")
+    cur = await conn.execute(
         "SELECT fn_refund_payment(%s::integer, %s::numeric, %s::varchar, %s::integer, %s::varchar) AS refund_id",
         (
             payment_id,
@@ -887,6 +900,15 @@ async def close_folio(
     user: dict = Depends(require_permission("folios:manage")),
     conn: AsyncConnection = Depends(get_db),
 ):
+    cur = await conn.execute(
+        "SELECT status FROM folios WHERE folio_id = %s", (folio_id,)
+    )
+    existing = await cur.fetchone()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Счёт не найден")
+    if existing["status"] == "CLOSED":
+        raise HTTPException(status_code=400, detail="Счёт уже закрыт")
+
     cur = await conn.execute(
         """
         UPDATE folios
@@ -945,6 +967,12 @@ async def bulk_refund_payments(
         raise HTTPException(status_code=400, detail="Укажите счета и сумму возврата")
     refunded: list[int] = []
     for folio_id in ids:
+        cur = await conn.execute(
+            "SELECT status FROM folios WHERE folio_id = %s", (folio_id,)
+        )
+        folio_row = await cur.fetchone()
+        if not folio_row or folio_row["status"] == "CLOSED":
+            continue
         cur = await conn.execute(
             "SELECT payment_id FROM payments WHERE folio_id = %s ORDER BY payment_id DESC LIMIT 1",
             (folio_id,),

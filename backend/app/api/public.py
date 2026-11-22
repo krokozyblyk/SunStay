@@ -10,7 +10,7 @@ from ..audit import write_audit_event
 from ..crypto import document_fields, hash_value, phone_fields
 from ..db import get_db
 from ..deps import get_current_user, get_optional_user
-from ..notifications import notify_guest_by_booking, notify_permission
+from ..notifications import notify_guest_by_booking, notify_permission, notify_roles
 from ..schemas import PublicBookingCreate, WaitlistCreate
 from ..utils import get_booking, row_to_dict, rows_to_dicts
 
@@ -621,9 +621,11 @@ async def create_public_booking(
         "Бронь создана",
         f"Ваша бронь #{booking_id} создана. Заезд {booking['checkin_date']}.",
     )
-    await notify_permission(
+    # Only front-desk roles need to know about a new booking. DB admins and
+    # housekeeping get their own role-specific notifications instead.
+    await notify_roles(
         conn,
-        "bookings:update",
+        ["Менеджер", "Управляющий отелем"],
         "NEW_BOOKING",
         "Новая бронь",
         f"Бронь #{booking_id}: {booking.get('guest_name', '')}, заезд {booking['checkin_date']}.",
