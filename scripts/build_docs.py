@@ -223,7 +223,7 @@ def build_main(out=OUT_MAIN, with_title=True, with_appendices=True):
         doc.add_page_break()
 
     h1(doc, "СОДЕРЖАНИЕ")
-    add_static_toc(doc)
+    B.add_toc(doc)
     set_update_fields(doc)
     doc.add_page_break()
 
