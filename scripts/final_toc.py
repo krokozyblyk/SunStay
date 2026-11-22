@@ -61,7 +61,8 @@ def process(name, old_items):
 
     toc_idx = next((i for i, p in enumerate(paras) if text_of(p) == NEEDLE), None)
     intro_idx = next((i for i, p in enumerate(paras)
-                      if text_of(p).startswith("ВВЕДЕНИЕ") and p.style.name.endswith("11")
+                      if text_of(p).startswith("ВВЕДЕНИЕ")
+                      and (p.style.name.endswith("11") or p.style.name.startswith("Heading"))
                       and toc_idx is not None and i > toc_idx), None)
     if toc_idx is None or intro_idx is None:
         print("SKIP", name)
