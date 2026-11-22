@@ -1,0 +1,12 @@
+name: Check demo users
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify demo accounts
+        run: python3 scripts/demo_check.py https://sunstay-api.onrender.com
