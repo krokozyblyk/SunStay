@@ -7,6 +7,8 @@ import json
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
 import build_pz as B
@@ -14,15 +16,37 @@ import build_pz as B
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 OUT_MAIN = DOCS / "Пояснительная_записка_SunStay.docx"
+OUT_NOTITLE = DOCS / "Пояснительная_записка_без_титульника.docx"
 SHOTS = DOCS / "screenshots"
 DIAGRAMS = DOCS / "diagrams"
 
 TBL_COUNTER = 0
+BOOKMARKS = {}
 
 
-def h1(doc, text): B.h1(doc, text)
-def h2(doc, text): B.h2(doc, text)
-def h3(doc, text): B.h3(doc, text)
+def toc_id(text):
+    if text not in BOOKMARKS:
+        BOOKMARKS[text] = ("bm%03d" % (len(BOOKMARKS) + 1), len(BOOKMARKS) + 1)
+    return BOOKMARKS[text]
+
+
+def add_bookmark(para, text):
+    name, num = toc_id(text)
+    start = OxmlElement("w:bookmarkStart")
+    start.set(qn("w:id"), str(num))
+    start.set(qn("w:name"), name)
+    end = OxmlElement("w:bookmarkEnd")
+    end.set(qn("w:id"), str(num))
+    para._p.insert(0, start)
+    para._p.append(end)
+
+
+def h1(doc, text):
+    B.h1(doc, text); add_bookmark(doc.paragraphs[-1], text)
+def h2(doc, text):
+    B.h2(doc, text); add_bookmark(doc.paragraphs[-1], text)
+def h3(doc, text):
+    B.h3(doc, text); add_bookmark(doc.paragraphs[-1], text)
 def p(doc, text): B.p(doc, text)
 def bullets(doc, items): B.bullets(doc, items)
 def numbered(doc, items): B.numbered(doc, items)
@@ -64,6 +88,94 @@ def appendix_doc(title):
     return doc
 
 
+def prepare_title_fixed(doc):
+    """Edit title-page text in place, preserving the template layout exactly."""
+    for para in doc.paragraphs:
+        for run in para.runs:
+            run.text = run.text.replace("2023", "2026").replace("Листов: 0", "Листов: 47")
+        if "Тема:" in para.text and "SunStay" not in para.text:
+            for run in list(para.runs):
+                run.text = ""
+            if para.runs:
+                para.runs[0].text = "Тема: «Разработка программного комплекса для автоматизации деятельности гостиницы «SunStay»»"
+        if "Пояснительная записка" in para.text:
+            for run in para.runs:
+                if "Пояснительная записка" in run.text:
+                    run.text = run.text.replace("Пояснительная записка", "Пояснительная записка")
+        if "Листов:" in para.text and para.text.strip() == "Листов: 47":
+            pass
+        if para.text.strip() == "2023":
+            for run in para.runs:
+                run.text = "2026"
+    # Signature table: only replace names, keep original widths/autofit
+    for table_obj in doc.tables:
+        for row in table_obj.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        run.text = (run.text.replace("Г.Ю. Волкова", "Л.А. Соколова")
+                                    .replace("И.И. Иванов", "Д.В. Злобин")
+                                    .replace("2023", "2026"))
+
+
+def set_update_fields(doc):
+    """Ask Word to refresh fields (TOC) when the document is opened."""
+    settings = doc.settings._element
+    el = settings.find(qn("w:updateFields"))
+    if el is None:
+        el = OxmlElement("w:updateFields")
+        settings.append(el)
+    el.set(qn("w:val"), "true")
+
+
+def add_static_toc(doc):
+    """A visible, working contents list with internal hyperlinks."""
+    entries = [
+        "ВВЕДЕНИЕ",
+        "1. ОБЩАЯ ЧАСТЬ",
+        "1.1. Цель разработки",
+        "1.2. Средства разработки",
+        "1.3. Требования к оформлению",
+        "2. СПЕЦИАЛЬНАЯ ЧАСТЬ",
+        "2.1. Постановка задачи",
+        "2.2. Внешняя спецификация",
+        "2.3. Проектирование",
+        "2.4. Результат работы программы",
+        "3. ТЕХНОЛОГИЧЕСКАЯ ЧАСТЬ",
+        "3.1. Инструментальные средства",
+        "3.3. Защитное программирование",
+        "3.4. Характеристики программы",
+        "ЗАКЛЮЧЕНИЕ",
+        "СПИСОК ИСПОЛЬЗОВАННЫХ МАТЕРИАЛОВ",
+        "ПРИЛОЖЕНИЯ",
+        "Приложение Б. Текст программы",
+        "Приложение В. Сценарий и результаты тестовых испытаний",
+        "Приложение Г. Руководство пользователя",
+        "Приложение Д. Скрипт базы данных",
+    ]
+    for text in entries:
+        para = doc.add_paragraph()
+        para.paragraph_format.first_line_indent = Cm(0)
+        para.paragraph_format.space_after = Pt(2)
+        name, _ = toc_id(text)
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("w:anchor"), name)
+        run = OxmlElement("w:r")
+        r_pr = OxmlElement("w:rPr")
+        color = OxmlElement("w:color")
+        color.set(qn("w:val"), "0563C1")
+        r_pr.append(color)
+        u = OxmlElement("w:u")
+        u.set(qn("w:val"), "single")
+        r_pr.append(u)
+        run.append(r_pr)
+        t = OxmlElement("w:t")
+        t.text = text
+        run.append(t)
+        hyperlink.append(run)
+        para._p.append(hyperlink)
+
+
 def code_block(doc, text):
     for line in text.splitlines():
         para = doc.add_paragraph()
@@ -76,20 +188,30 @@ def code_block(doc, text):
 
 
 # ====================================================================== MAIN NOTE
-def build_main():
+def build_main(out=OUT_MAIN, with_title=True, with_appendices=True):
     global TBL_COUNTER
     TBL_COUNTER = 0
+    BOOKMARKS.clear()
     B.FIG_COUNTER = 0
     doc = base_doc(template=True)
-    B.prepare_title_page(doc)
+    if with_title:
+        prepare_title_fixed(doc)
+    # remove the template title page when building the no-title version
+    else:
+        for el in list(doc.element.body):
+            if el.tag.endswith("}p") or el.tag.endswith("}tbl"):
+                doc.element.body.remove(el)
     B.add_page_numbers(doc)
-    doc.add_page_break()
+    if with_title:
+        doc.add_page_break()
 
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title.paragraph_format.first_line_indent = Cm(0)
     B.set_run_font(title.add_run("СОДЕРЖАНИЕ"), 16, bold=True)
-    B.add_toc(doc)
+    add_static_toc(doc)
+    set_update_fields(doc)
+    doc.add_page_break()
 
     # ------------------------------------------------------------ ВВЕДЕНИЕ
     h1(doc, "ВВЕДЕНИЕ")
@@ -275,6 +397,7 @@ def build_main():
         ("admin-users.png", "Пользователи и роли"),
         ("admin-audit.png", "Журнал аудита"),
         ("admin-backups.png", "Резервное копирование и мониторинг"),
+        ("guest-services.png", "Дополнительные услуги гостя"),
         ("manager-dashboard-dark.png", "Тёмная тема интерфейса"),
     ]
     for name, caption in shots:
@@ -336,8 +459,86 @@ def build_main():
         para.paragraph_format.first_line_indent = Cm(0)
         B.set_run_font(para.add_run(f"{i}. {s}"), 14)
 
-    doc.save(str(OUT_MAIN))
-    print("Saved:", OUT_MAIN)
+    if with_appendices:
+        append_appendices(doc)
+
+    doc.save(str(out))
+    print("Saved:", out)
+
+
+def append_appendices(doc):
+    h1(doc, "ПРИЛОЖЕНИЯ")
+    h2(doc, "Приложение Б. Текст программы")
+    p(doc, "В приложении приведены основные модули программного комплекса «SunStay». Полный исходный код размещён в репозитории проекта.")
+    for rel in ["backend/app/main.py", "backend/app/config.py", "backend/app/deps.py",
+                "backend/app/api/auth.py", "backend/app/api/public.py", "backend/app/api/manager.py",
+                "backend/app/api/admin.py", "backend/app/services/backup.py", "backend/app/notifications.py",
+                "frontend/src/App.tsx", "frontend/src/lib/api.ts", "frontend/src/lib/utils.ts",
+                "frontend/src/components/ui.tsx"]:
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        h3(doc, rel)
+        text = path.read_text(encoding="utf-8")
+        if len(text) > 12000:
+            text = text[:12000] + "\n... (далее см. репозиторий проекта)"
+        code_block(doc, text)
+
+    h2(doc, "Приложение В. Сценарий и результаты тестовых испытаний")
+    p(doc, "Тестирование проводилось по уровням: SQL-тесты, API-тесты, нагрузочное тестирование, security-тесты и тест восстановления базы данных.")
+    h3(doc, "1. SQL-тестирование")
+    p(doc, "Проверены функции доступности номеров, расчёта стоимости, создания брони, подтверждения, заселения и выселения, заказа услуг, платежей и возвратов, ночного аудита, остатков расходников, аудита и шифрования. Все проверки выполнены успешно.")
+    h3(doc, "2. API-тестирование")
+    p(doc, "Проверены health-endpoint, аутентификация и RBAC, публичный каталог и доступность, отчёты, генерация PDF, защита от SQL-инъекций, административные эндпоинты, статистика пользователей, аудит входов, маскирование контактов и резервное копирование. Все 15 автоматических тестов пройдены успешно.")
+    h3(doc, "3. Нагрузочное тестирование")
+    B.table(doc, ["Сценарий", "Запросов", "Параллельно", "RPS", "Среднее, мс", "p95, мс", "Ошибки"], [
+        ["GET /api/public/room-types", "200", "20", "264,40", "67,11", "111,29", "0"],
+        ["GET /api/public/availability", "100", "10", "284,07", "34,02", "66,49", "0"],
+    ], widths=[5.8, 2.0, 2.3, 2.0, 2.2, 2.0, 1.7])
+    h3(doc, "4. Security-тестирование")
+    bullets(doc, [
+        "Попытка доступа гостя к менеджерским эндпоинтам — доступ запрещён.",
+        "Попытка доступа менеджера к административным эндпоинтам — доступ запрещён.",
+        "Попытка SQL-инъекции в параметрах поиска — инъекция не выполнена.",
+        "Три неудачные попытки входа — блокировка учётной записи на 30 секунд.",
+        "Проверка маскирования телефона и документа — открытые значения не возвращаются.",
+    ])
+    h3(doc, "5. Тест восстановления базы данных")
+    p(doc, "Резервная копия создаётся утилитой pg_dump в формате custom. Тест восстановления выполняется в отдельную базу с последующей сверкой количества таблиц и бронирований. Результат: 44 таблицы, 43 брони, восстановление успешно.")
+
+    h2(doc, "Приложение Г. Руководство пользователя")
+    for label, text in [
+        ("Гость", "Откройте главную страницу сайта, выберите даты заезда и выезда, количество гостей и нажмите «Найти номер». Выберите подходящий номер, ознакомьтесь с описанием и отзывами, нажмите «Выбрать». Заполните данные и подтвердите бронирование. В личном кабинете доступны брони, счета, услуги, отзывы, бонусы и настройки."),
+        ("Менеджер", "Войдите под демо-аккаунтом менеджера. Откройте «Бронирования» или «Шахматку», создайте бронь, подтвердите её, выполните заселение, примите платёж. При выезде закройте folio — после закрытия счёта гостю начисляются бонусы и приходит уведомление. Ночной аудит запускается с дашборда."),
+        ("Хаускипинг", "Войдите под демо-аккаунтом хаускипинга. Откройте «Доска хаускипинга», начните задание, отметьте выполнение и при необходимости спишите расходники."),
+        ("Управляющий отелем", "Войдите под демо-аккаунтом управляющего. Доступны все операции менеджера, управление тарифами, услугами, номерным фондом, сотрудниками и отчётами."),
+        ("Администратор БД", "Войдите под демо-аккаунтом администратора БД. Доступны пользователи и роли, справочники, аудит, резервное копирование, мониторинг и настройки. Доступ администратора БД не может быть отозван."),
+    ]:
+        h3(doc, label)
+        p(doc, text)
+    B.table(doc, ["Роль", "Email", "Пароль"], [
+        ["Гость", "guest.demo@sunstay.example", "SunStay2026!"],
+        ["Менеджер", "smirnova@sunstay.example", "SunStay2026!"],
+        ["Хаускипинг", "fedorov@sunstay.example", "SunStay2026!"],
+        ["Управляющий отелем", "volkov@sunstay.example", "SunStay2026!"],
+        ["Администратор БД", "dba@sunstay.example", "SunStay2026!"],
+    ], widths=[4.5, 7.0, 4.0])
+
+    h2(doc, "Приложение Д. Скрипт базы данных")
+    p(doc, "В приложении приведены основные скрипты инициализации и миграций базы данных «SunStay». Полный комплект находится в каталоге database/init.")
+    for name in ["000_extensions.sql", "001_hotel_db.sql", "002_week5.sql", "008_security_features.sql",
+                 "010_secure_checkin_hold.sql", "017_room_variants_demo_stay.sql", "018_capacity_2fa_stock.sql",
+                 "019_hotel_reviews.sql", "020_room_amenities_all.sql", "021_service_images.sql",
+                 "022_room_photos_distinct.sql", "023_demo_hotel_reviews.sql", "024_unique_room_photos.sql",
+                 "025_spb_variant_photos.sql"]:
+        path = ROOT / "database" / "init" / name
+        if not path.exists():
+            continue
+        h3(doc, name)
+        text = path.read_text(encoding="utf-8")
+        if len(text) > 9000:
+            text = text[:9000] + "\n... (далее см. database/init/" + name + ")"
+        code_block(doc, text)
 
 
 # ====================================================================== APPENDIX Б
@@ -455,7 +656,8 @@ def build_appendix_d():
 
 
 def main():
-    build_main()
+    build_main(OUT_MAIN, with_title=True, with_appendices=True)
+    build_main(OUT_NOTITLE, with_title=False, with_appendices=True)
     build_appendix_b()
     build_appendix_v()
     build_appendix_g()
