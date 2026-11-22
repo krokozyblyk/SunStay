@@ -27,6 +27,7 @@ FILES = [
     "022_room_photos_distinct.sql",
     "023_demo_hotel_reviews.sql",
     "024_unique_room_photos.sql",
+    "025_spb_variant_photos.sql",
 ]
 
 parts = [

@@ -45,38 +45,38 @@ const DEMO_ACCOUNTS = [
 const FALLBACK_ROOM_TYPES = [
   {
     room_type_id: 1, name: "Стандарт", capacity: 2, min_price: 4000, price_per_night: 4000,
-    image_url: "images/unique/room-001.jpg",
+    image_url: "images/spb/standard-classic-1.jpg",
     amenities: ["Wi-Fi", "Кондиционер", "Сейф"],
     description: "Уютные номера с классическим интерьером и продуманным светом.",
     available_rooms: 3,
     rooms: [
-      { room_id: 9, room_number: "111", rate_id: 5, price_per_night: 4000, variant_name: "Классика", description: "Классический интерьер, удобная кровать и рабочий стол.", floor: 1, image_url: "images/unique/room-002.jpg" },
-      { room_id: 18, room_number: "120", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Светлый номер с панорамным окном и мягким креслом.", floor: 2, image_url: "images/unique/room-003.jpg" },
-      { room_id: 19, room_number: "121", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Уютный интерьер с видом на внутренний двор.", floor: 2, image_url: "images/unique/room-004.jpg" },
+      { room_id: 9, room_number: "111", rate_id: 5, price_per_night: 4000, variant_name: "Классика", description: "Классический интерьер, удобная кровать и рабочий стол.", floor: 1, image_url: "images/spb/standard-panorama-1.jpg" },
+      { room_id: 18, room_number: "120", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Светлый номер с панорамным окном и мягким креслом.", floor: 2, image_url: "images/spb/standard-panorama-2.jpg" },
+      { room_id: 19, room_number: "121", rate_id: 5, price_per_night: 4000, variant_name: "Панорама", description: "Уютный интерьер с видом на внутренний двор.", floor: 2, image_url: "images/spb/standard-cozy-1.jpg" },
     ],
   },
   {
     room_type_id: 2, name: "Комфорт", capacity: 3, min_price: 5600, price_per_night: 5600,
-    image_url: "images/unique/room-025.jpg",
+    image_url: "images/spb/comfort-city-1.jpg",
     amenities: ["Wi-Fi", "Кондиционер", "Мини-бар", "Сейф"],
     description: "Номера повышенной комфортности с диваном и кофе-станцией.",
     available_rooms: 3,
     rooms: [
-      { room_id: 28, room_number: "210", rate_id: 3, price_per_night: 5600, variant_name: "Городской вид", description: "Номер с видом на город, мягким диваном и кофе-станцией.", floor: 2, image_url: "images/unique/room-026.jpg" },
-      { room_id: 38, room_number: "220", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Увеличенная площадь, кресла и просторная ванная.", floor: 3, image_url: "images/unique/room-027.jpg" },
-      { room_id: 39, room_number: "221", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Интерьер с дополнительной зоной отдыха.", floor: 3, image_url: "images/unique/room-028.jpg" },
+      { room_id: 28, room_number: "210", rate_id: 3, price_per_night: 5600, variant_name: "Городской вид", description: "Номер с видом на город, мягким диваном и кофе-станцией.", floor: 2, image_url: "images/spb/comfort-business-1.jpg" },
+      { room_id: 38, room_number: "220", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Увеличенная площадь, кресла и просторная ванная.", floor: 3, image_url: "images/spb/comfort-business-2.jpg" },
+      { room_id: 39, room_number: "221", rate_id: 3, price_per_night: 5600, variant_name: "Простор", description: "Интерьер с дополнительной зоной отдыха.", floor: 3, image_url: "images/spb/comfort-spacious-1.jpg" },
     ],
   },
   {
     room_type_id: 3, name: "Люкс", capacity: 4, min_price: 9200, price_per_night: 9200,
-    image_url: "images/unique/room-047.jpg",
+    image_url: "images/spb/lux-president-1.jpg",
     amenities: ["Wi-Fi", "Кондиционер", "Мини-бар", "Сейф", "Балкон"],
     description: "Просторные люксы с гостиной и панорамными окнами.",
     available_rooms: 3,
     rooms: [
-      { room_id: 6, room_number: "301", rate_id: 4, price_per_night: 9200, variant_name: "Президентский", description: "Гостиная, кабинет и панорамный вид на набережную.", floor: 3, image_url: "images/unique/room-048.jpg" },
-      { room_id: 48, room_number: "310", rate_id: 4, price_per_night: 9200, variant_name: "Панорамный", description: "Панорамное окно, отдельная гостиная и мягкий свет.", floor: 3, image_url: "images/unique/room-049.jpg" },
-      { room_id: 53, room_number: "315", rate_id: 4, price_per_night: 9200, variant_name: "Классик", description: "Классический люкс с просторной спальней и гостиной.", floor: 4, image_url: "images/unique/room-050.jpg" },
+      { room_id: 6, room_number: "301", rate_id: 4, price_per_night: 9200, variant_name: "Президентский", description: "Гостиная, кабинет и панорамный вид на набережную.", floor: 3, image_url: "images/spb/lux-panorama-1.jpg" },
+      { room_id: 48, room_number: "310", rate_id: 4, price_per_night: 9200, variant_name: "Панорамный", description: "Панорамное окно, отдельная гостиная и мягкий свет.", floor: 3, image_url: "images/spb/lux-classic-1.jpg" },
+      { room_id: 53, room_number: "315", rate_id: 4, price_per_night: 9200, variant_name: "Классик", description: "Классический люкс с просторной спальней и гостиной.", floor: 4, image_url: "images/spb/lux-classic-2.jpg" },
     ],
   },
 ];
@@ -301,7 +301,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="relative">
-            <RoomArt index={0} imageUrl="images/unique/room-048.jpg" className="h-[360px] shadow-float md:h-[440px]" />
+            <RoomArt index={0} imageUrl="images/spb/lux-panorama-1.jpg" className="h-[360px] shadow-float md:h-[440px]" />
             <Card className="mt-4">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <label className="col-span-1 flex flex-col gap-1.5">

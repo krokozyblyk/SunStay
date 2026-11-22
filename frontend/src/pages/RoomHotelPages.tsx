@@ -18,9 +18,9 @@ function ReviewStars({ rating }: { rating: number }) {
 }
 
 const FALLBACK = [
-  { name: "Стандарт", image_url: "images/unique/room-001.jpg", min_price: 4000 },
-  { name: "Комфорт", image_url: "images/unique/room-025.jpg", min_price: 5600 },
-  { name: "Люкс", image_url: "images/unique/room-047.jpg", min_price: 9200 },
+  { name: "Стандарт", image_url: "images/spb/standard-classic-1.jpg", min_price: 4000 },
+  { name: "Комфорт", image_url: "images/spb/comfort-city-1.jpg", min_price: 5600 },
+  { name: "Люкс", image_url: "images/spb/lux-president-1.jpg", min_price: 9200 },
 ];
 
 export function RoomPage() {

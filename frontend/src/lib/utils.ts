@@ -222,10 +222,10 @@ export function resolveImage(value?: string | null, fallback = "") {
 
 export function roomImageByName(name?: string | null) {
   const value = (name ?? "").toLowerCase();
-  if (value.includes("стандарт")) return "images/unique/room-001.jpg";
-  if (value.includes("комфорт")) return "images/unique/room-025.jpg";
-  if (value.includes("люкс")) return "images/unique/room-047.jpg";
-  return "images/unique/room-001.jpg";
+  if (value.includes("стандарт")) return "images/spb/standard-classic-1.jpg";
+  if (value.includes("комфорт")) return "images/spb/comfort-city-1.jpg";
+  if (value.includes("люкс")) return "images/spb/lux-president-1.jpg";
+  return "images/spb/standard-classic-1.jpg";
 }
 
 export function serviceImageByName(name?: string | null) {
