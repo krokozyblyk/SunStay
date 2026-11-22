@@ -22,6 +22,8 @@ from docx.shared import Cm, Pt, RGBColor
 from docx.text.paragraph import Paragraph
 from docx.table import Table
 
+import test_cases
+
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 DIAG = DOCS / "diagrams"
@@ -308,47 +310,32 @@ def enrich_v(doc: Document, s: int, e: int):
     if 0 <= i_met < e:
         p_met._p.addprevious(new_para(doc, "5. МЕТОДЫ ИСПЫТАНИЙ", h2s)._p)
 
-    # 25 detailed test cases after the last existing test table
-    tables = [t for t in doc.tables if t._tbl.getprevious() is not None]
-    # find the roles table by header text inside this region
-    last_tbl = None
-    for t in doc.tables:
-        first = " ".join(c.text for c in t.rows[0].cells)
-        if "Роль" in first and "Доступно" in first:
-            last_tbl = t
-    if last_tbl is not None:
-        cap = new_para(doc, "Таблица 3. Сводные результаты тестовых испытаний (25 сценариев)", size=12, bold=True)
-        rows = [
-            ["1", "Поиск свободных номеров на заданные даты", "Корректный список номеров", "Пройден"],
-            ["2", "Бронирование номера без авторизации", "Перенаправление на вход", "Пройден"],
-            ["3", "Создание брони на свободные даты", "Бронь NEW/CONFIRMED", "Пройден"],
-            ["4", "Повторная бронь того же номера на те же даты", "Ошибка пересечения, откат", "Пройден"],
-            ["5", "Тариф другого типа номера", "Ошибка валидации тарифа", "Пройден"],
-            ["6", "Число гостей больше вместимости", "Запрос отклонён", "Пройден"],
-            ["7", "Просроченный промокод", "Скидка не применена", "Пройден"],
-            ["8", "Отмена брони с причиной", "Статус CANCELLED", "Пройден"],
-            ["9", "Заселение по неподтверждённой брони", "Операция запрещена", "Пройден"],
-            ["10", "Заселение с неверным документом", "Сверка хэша, запрет", "Пройден"],
-            ["11", "Холд на сумму при заселении", "Холд создан и зафиксирован", "Пройден"],
-            ["12", "Заказ услуги к заселённой брони", "Строка folio создана", "Пройден"],
-            ["13", "Платёж по folio", "Статус оплачено, запись в журнале", "Пройден"],
-            ["14", "Возврат по оплаченному счёту", "Возврат оформлен", "Пройден"],
-            ["15", "Повторное закрытие счёта", "Сообщение «Счёт уже закрыт»", "Пройден"],
-            ["16", "Выселение и закрытие folio", "Счёт закрыт, бонусы начислены", "Пройден"],
-            ["17", "Массовое закрытие счетов", "Выбранные счета закрыты", "Пройден"],
-            ["18", "Списание расходника больше остатка", "Триггер запрещает отрицательный остаток", "Пройден"],
-            ["19", "Заявка на ремонт от хаускипинга", "Заявка создана", "Пройден"],
-            ["20", "Уведомление из листа ожидания", "Письмо и уведомление отправлены", "Пройден"],
-            ["21", "Отказ в листе ожидания с причиной", "Причина сохранена", "Пройден"],
-            ["22", "Доступ гостя к менеджерским API", "403 Forbidden", "Пройден"],
-            ["23", "SQL-инъекция в параметре поиска", "Запрос параметризован, инъекция отклонена", "Пройден"],
-            ["24", "Три неудачных входа подряд", "Блокировка на 30 секунд", "Пройден"],
-            ["25", "Восстановление дампа в отдельную БД", "44 таблицы, 43 брони, успешно", "Пройден"],
-        ]
-        tbl = new_table(doc, ["№", "Сценарий", "Ожидаемый результат", "Статус"], rows,
-                        widths=[1.0, 6.5, 6.0, 2.0])
-        last_tbl._tbl.addnext(cap._p)
-        cap._p.addnext(tbl._tbl)
+    # One combined test table in the exact format of the previous course PZ.
+    # Remove the old separate test tables inside this appendix first.
+    cur = list(doc.paragraphs)
+    v_idx = next((i for i, p in enumerate(cur)
+                  if p.alignment == 2 and text_of(p).startswith(PRILOZ + " В")), -1)
+    g_idx = next((i for i, p in enumerate(cur)
+                  if i > v_idx and p.alignment == 2 and text_of(p).startswith(PRILOZ + " Г")),
+                 len(cur))
+    if v_idx >= 0:
+        v_el, g_el = cur[v_idx]._p, cur[g_idx]._p
+        children = list(doc.element.body)
+        i0 = children.index(v_el)
+        i1 = children.index(g_el) if g_el in children else len(children)
+        for t in list(doc.tables):
+            el = t._tbl
+            if el in children and i0 <= children.index(el) < i1:
+                el.getparent().remove(el)
+
+        anchor = next((p for p in doc.paragraphs
+                       if text_of(p).startswith("6. Тестовые примеры") and p.style.name == h2s), None)
+        if anchor is not None:
+            cap = new_para(doc, "Таблица 1. Тестовые сценарии и результаты испытаний", size=12, bold=True)
+            tbl = new_table(doc, test_cases.HEADERS, test_cases.rows(),
+                            widths=[0.8, 4.8, 4.8, 4.2, 1.6])
+            anchor._p.addnext(cap._p)
+            cap._p.addnext(tbl._tbl)
 
 
 # ------------------------------------------------------------------ appendix Г
@@ -379,15 +366,41 @@ def enrich_g(doc: Document, s: int, e: int):
             ["pg_dump / pg_restore", "Резервное копирование и восстановление"],
         ], widths=[6.0, 9.5]))
 
+    # Real screenshots captured from the deployed SunStay site.
     shots = {
-        "Гость": ["sst-guest-home.png", "sst-guest-search.png", "sst-guest-room.png",
-                  "sst-guest-booking.png", "sst-guest-folio.png", "sst-guest-services.png",
-                  "sst-guest-reviews.png", "sst-guest-profile.png"],
-        "Менеджер": ["sst-manager-dashboard.png", "sst-manager-bookings.png", "sst-manager-grid.png",
-                     "sst-manager-checkin.png", "sst-manager-folio.png", "sst-manager-waitlist.png",
-                     "sst-manager-reports.png"],
-        "Хаускипинг": ["sst-hk-board.png", "sst-hk-task.png", "sst-hk-stock.png", "sst-hk-repair.png"],
-        "Администратор БД": ["sst-dba-users.png", "sst-dba-backup.png", "sst-dba-monitor.png"],
+        "Гость": [
+            ("real-home.jpg", "Главная страница сайта"),
+            ("real-search.jpg", "Поиск доступных номеров"),
+            ("real-guest-home.jpg", "Личный кабинет гостя"),
+            ("real-guest-bookings.jpg", "Мои бронирования"),
+            ("real-guest-services.jpg", "Дополнительные услуги"),
+            ("real-guest-invoices.jpg", "Счета и платежи"),
+            ("real-guest-loyalty.jpg", "Бонусные баллы"),
+            ("real-guest-profile.jpg", "Профиль и настройки"),
+        ],
+        "Менеджер": [
+            ("real-manager-dashboard.jpg", "Дашборд менеджера"),
+            ("real-manager-bookings.jpg", "Реестр бронирований"),
+            ("real-manager-grid.jpg", "Шахматка номеров"),
+            ("real-manager-folios.jpg", "Folio и платежи"),
+            ("real-manager-waitlist.jpg", "Лист ожидания"),
+            ("real-manager-reports.jpg", "Отчёты и аналитика"),
+        ],
+        "Хаускипинг": [
+            ("real-hk-board.jpg", "Доска хаускипинга"),
+            ("real-hk-maintenance.jpg", "Заявки на техобслуживание"),
+        ],
+        "Администратор БД": [
+            ("real-admin-dashboard.jpg", "Дашборд администратора"),
+            ("real-admin-users.jpg", "Пользователи и роли"),
+            ("real-admin-audit.jpg", "Журнал аудита"),
+            ("real-admin-backups.jpg", "Резервное копирование"),
+            ("real-admin-reviews.jpg", "Модерация отзывов"),
+            ("real-admin-floor-plan.jpg", "План этажа"),
+            ("real-admin-directories.jpg", "Справочники отеля"),
+            ("real-admin-maintenance.jpg", "Заявки на техобслуживание"),
+            ("real-admin-settings.jpg", "Настройки"),
+        ],
     }
     for role, files in shots.items():
         # always search fresh: previous insertions shift all indices
@@ -402,9 +415,9 @@ def enrich_g(doc: Document, s: int, e: int):
             continue
         q = cur[idx + 1]
         nodes = []
-        for n, fn in enumerate(files):
+        for n, (fn, caption) in enumerate(files):
             ip, cp = new_picture(doc, SHOTS / fn,
-                                  f"Рисунок {n+1}. {role} — {fn[4:-4].replace('-', ' ')}", 14.0)
+                                  f"Рисунок {n+1}. {role} — {caption}", 14.0)
             nodes += [ip, cp]
         insert_after(q, *nodes)
 
