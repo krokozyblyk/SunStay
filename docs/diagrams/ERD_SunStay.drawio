@@ -1,0 +1,32 @@
+<mxfile host="Electron" version="24.7.17">
+  <diagram name="ERD">
+    <mxGraphModel dx="1600" dy="1000" grid="1" page="1" pageWidth="1600" pageHeight="1100">
+      <root><mxCell id="0" /><mxCell id="1" parent="0" />
+        <mxCell id="n1" value="Логическая и физическая модель данных «SunStay»" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a237e;strokeColor=#1976d2;fontColor=#ffffff;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="300" y="20" width="900" height="40" as="geometry" /></mxCell>
+        <mxCell id="n2" value="users
+user_id, role_id, email, password_hash" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="50" y="110" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="n3" value="guests
+guest_id, user_id, full_name, document_number_hash" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="420" y="110" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="n4" value="rooms
+room_id, room_type_id, status_id, room_number" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="790" y="110" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="n5" value="room_types
+room_type_id, name, capacity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="1160" y="110" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="n6" value="bookings
+booking_id, guest_id, room_id, rate_id, dates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="50" y="340" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="n7" value="folios
+folio_id, booking_id, status, balance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="420" y="340" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="n8" value="payments
+payment_id, folio_id, amount, method" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="790" y="340" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="n9" value="housekeeping_tasks
+task_id, room_id, staff_id, status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="1160" y="340" width="320" height="100" as="geometry" /></mxCell>
+        <mxCell id="e102" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n2" target="n3" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e103" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n3" target="n5" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e104" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n4" target="n5" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e105" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n5" target="n6" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e106" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n6" target="n6" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e107" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n7" target="n7" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e108" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n8" target="n9" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

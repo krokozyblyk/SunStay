@@ -1,0 +1,26 @@
+<mxfile host="Electron" version="24.7.17">
+  <diagram name="Функциональная схема">
+    <mxGraphModel dx="1600" dy="1000" grid="1" page="1" pageWidth="1600" pageHeight="1100">
+      <root><mxCell id="0" /><mxCell id="1" parent="0" />
+        <mxCell id="n1" value="Функциональная схема информационной системы «SunStay»" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a237e;strokeColor=#1976d2;fontColor=#ffffff;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="250" y="20" width="1000" height="40" as="geometry" /></mxCell>
+        <mxCell id="n2" value="Гость" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90caf9;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="60" y="110" width="250" height="45" as="geometry" /></mxCell>
+        <mxCell id="n3" value="Менеджер" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90caf9;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="430" y="110" width="250" height="45" as="geometry" /></mxCell>
+        <mxCell id="n4" value="Хаускипинг" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90caf9;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="800" y="110" width="250" height="45" as="geometry" /></mxCell>
+        <mxCell id="n5" value="Администратор БД" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90caf9;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="1170" y="110" width="250" height="45" as="geometry" /></mxCell>
+        <mxCell id="n10" value="Публичный сайт: поиск, бронь, отзывы" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="60" y="240" width="250" height="70" as="geometry" /></mxCell>
+        <mxCell id="n11" value="Операции: брони, заезд, folio, отчёты" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="430" y="240" width="250" height="70" as="geometry" /></mxCell>
+        <mxCell id="n12" value="Обслуживание: задания, расходники, ремонт" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="800" y="240" width="250" height="70" as="geometry" /></mxCell>
+        <mxCell id="n13" value="Администрирование: users, роли, бэкапы" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontColor=#000000;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="1170" y="240" width="250" height="70" as="geometry" /></mxCell>
+        <mxCell id="e102" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n2" target="n10" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e103" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n3" target="n11" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e104" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n4" target="n12" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e105" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n5" target="n13" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="n20" value="Общая БД PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a237e;strokeColor=#1976d2;fontColor=#ffffff;fontStyle=1;fontSize=11;" parent="1" vertex="1"><mxGeometry x="350" y="400" width="800" height="50" as="geometry" /></mxCell>
+        <mxCell id="e210" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n10" target="n20" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e211" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n11" target="n20" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e212" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n12" target="n20" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e213" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="n13" target="n20" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
