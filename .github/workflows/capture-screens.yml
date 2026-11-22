@@ -1,0 +1,22 @@
+name: Capture SunStay screenshots
+
+on:
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: cd frontend && npm ci && npx playwright install --with-deps chromium
+      - name: Capture
+        run: cd frontend && node scripts/capture_screens_ci.mjs
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: sunstay-screenshots
+          path: frontend/screenshots/*.png
